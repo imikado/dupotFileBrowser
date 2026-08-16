@@ -72,9 +72,17 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
         btn.set_hexpand(True)
 
         def _on_click(_b):
+            # Wait for the popover to actually finish closing — its real
+            # "closed" signal, not just calling popdown() — before running
+            # the action. on_click often opens its own follow-up popup
+            # (Add Color, Open With…); firing it after a fixed one-tick
+            # GLib.idle_add instead of this signal raced this popover's
+            # own close animation/pointer-grab teardown, which could still
+            # be in flight past that one tick — the new popup would then
+            # open while the old grab hadn't been released yet and end up
+            # not showing at all (see popup_deferred, same root cause).
+            popover.connect("closed", lambda _p: item.on_click())
             popover.popdown()
-            # On exécute l'action au tour de boucle suivant
-            GLib.idle_add(item.on_click)
 
         btn.connect("clicked", _on_click)
         return btn
