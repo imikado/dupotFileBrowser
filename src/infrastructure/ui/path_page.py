@@ -1,19 +1,18 @@
-import os
-import subprocess
-
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Gdk", "4.0")
-gi.require_version("Gio", "2.0")
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, GLib, Gtk
 
 from domain.entity.user_settings_entity import UserSettingsEntity
 from domain.UseCase.list_directory_uc import ListDirectoryUc
 from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
+from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
+from infrastructure.ui.shared.open_with_popup import show_open_with_popup
+from infrastructure.ui.shared.rename_dialog import show_rename_dialog
 
 COLUMN_WIDTH = 260
 
@@ -280,84 +279,64 @@ class PathPage(Gtk.Box):
         if entry is None:
             return
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        box.add_css_class("menu")  # Donne le style visuel d'un menu GTK
+        item_list = [ContextMenuItem(_("Open"), lambda: self._open_entry(column, row))]
 
-        popover = Gtk.Popover()
-        popover.set_child(box)
-        popover.set_parent(row)
-        popover.set_pointing_to(Gdk.Rectangle(x=int(x), y=int(y), width=1, height=1))
-        popover.set_autohide(True)
-        popover.connect("closed", lambda p: p.unparent())
-
-        def make_button(label_text, callback):
-            btn = Gtk.Button(label=label_text)
-            btn.add_css_class("flat")
-            # Gtk.Button n'a plus de set_alignment() en GTK4 : le bouton
-            # étire son Label enfant sur toute sa largeur (halign FILL par
-            # défaut), donc c'est ce Label qu'il faut aligner à gauche.
-            btn.get_child().set_xalign(0.0)
-
-            def _on_click(_b):
-                popover.popdown()
-                # On exécute l'action au tour de boucle suivant
-                GLib.idle_add(callback)
-
-            btn.connect("clicked", _on_click)
-            return btn
-
-        # Bouton "Open"
-        box.append(make_button(_("Open"), lambda: self._open_entry(column, row)))
-
-        # Bouton "Open With…" (uniquement pour les fichiers)
         if not entry.is_dir:
-            box.append(
-                make_button(
-                    _("Open With…"), lambda: self._open_with(entry.path, row)
+            item_list.append(
+                ContextMenuItem(
+                    _("Open With…"),
+                    lambda: show_open_with_popup(row, entry.path, self._system_api),
                 )
             )
 
-        # Bouton "Add to favorites" (uniquement pour les répertoires)
         if entry.is_dir:
-            box.append(
-                make_button(
+            item_list.append(
+                ContextMenuItem(
                     _("Add to favorites"),
                     lambda: self._add_to_favorites(entry.name, entry.path),
                 )
             )
 
-        # Boutons "Copy" et "Cut"
-        box.append(
-            make_button(
+        item_list.append(
+            ContextMenuItem(
                 _("Copy"),
                 lambda: self._copy_to_clipboard(entry.path, cut=False, name=entry.name),
             )
         )
-        box.append(
-            make_button(
+        item_list.append(
+            ContextMenuItem(
                 _("Cut"),
                 lambda: self._copy_to_clipboard(entry.path, cut=True, name=entry.name),
             )
         )
-
-        # Bouton "Rename"
-        box.append(
-            make_button(
-                _("Rename"), lambda: self._show_rename_dialog(column, entry, row)
+        item_list.append(
+            ContextMenuItem(
+                _("Rename"),
+                lambda: show_rename_dialog(
+                    row.get_root(),
+                    self._system_api,
+                    entry.name,
+                    entry.path,
+                    lambda destination: self._on_renamed(column, destination),
+                ),
             )
         )
 
-        GLib.idle_add(self._popup_deferred, popover)
+        show_context_menu(row, x, y, item_list)
 
-    def _popup_deferred(self, popover):
-        """Shows a popover on the next idle iteration instead of straight
-        away. Needed whenever popup() is called synchronously from inside
-        another popover's own click/close handling (e.g. a right-click
-        menu item opening a follow-up popover, or the right-click gesture
-        itself) — doing it immediately races that other popover's pointer
-        grab/teardown and the new one ends up unresponsive."""
-        popover.popup()
-        return False
+    def _on_renamed(self, column: _Column, destination: str):
+        """Called by rename_dialog once the rename actually happened on
+        disk. The renamed entry's own path is now stale for any column
+        already open on it — drop those, same as _open_entry does when a
+        row's underlying folder changes — then refresh the parent column
+        and reselect the entry under its new name."""
+        index = self._columns.index(column)
+        for stale in self._columns[index + 1 :]:
+            self._columns_box.remove(stale)
+        self._columns = self._columns[: index + 1]
+
+        self.refresh_path(column.path)
+        column.select_path(destination)
 
     def _copy_to_clipboard(self, path: str, cut: bool, name: str | None = None):
         """Puts the file/folder on the system clipboard the same way
@@ -384,158 +363,9 @@ class PathPage(Gtk.Box):
             self._last_copied_path = path
             self._on_file_copied(name or path, path)
 
-    def _show_rename_dialog(
-        self, column: _Column, entry, row, initial_name: str | None = None
-    ):
-        name_entry = Gtk.Entry()
-        name_entry.set_text(initial_name or entry.name)
-        name_entry.set_activates_default(True)
-
-        dialog = Adw.AlertDialog(
-            heading=_("Rename"),
-            body=_('Choose a new name for "{name}".').format(name=entry.name),
-        )
-        dialog.set_extra_child(name_entry)
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("rename", _("Rename"))
-        dialog.set_default_response("rename")
-        dialog.set_close_response("cancel")
-        dialog.set_response_appearance("rename", Adw.ResponseAppearance.SUGGESTED)
-
-        def on_response(_dialog, response):
-            if response != "rename":
-                return
-            new_name = name_entry.get_text().strip()
-            if not new_name or new_name == entry.name:
-                return
-            parent = self._system_api.get_parent_dir(entry.path)
-            destination = os.path.join(parent, new_name)
-            if self._system_api.file_exists(destination):
-                # Still taken: ask again, keeping the attempted name so
-                # the user can tweak it instead of retyping from scratch.
-                GLib.idle_add(self._show_rename_dialog, column, entry, row, new_name)
-                return
-            self._perform_rename(column, entry, destination)
-
-        dialog.connect("response", on_response)
-        dialog.present(row.get_root())
-
-    def _perform_rename(self, column: _Column, entry, destination: str):
-        # get_move_call() goes through flatpak-spawn --host when
-        # sandboxed, same as the Cut/Paste "move" job (see SystemApi._cmd).
-        # A rename is a same-directory move, so it runs synchronously —
-        # it's a plain filesystem rename, not a data copy.
-        result = subprocess.run(
-            self._system_api.get_move_call(entry.path, destination),
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            self._show_rename_error(entry.name, result.stdout + result.stderr, column.get_root())
-            return
-
-        # The renamed entry's own path is now stale for any column already
-        # open on it — drop those, same as _open_entry does when a row's
-        # underlying folder changes.
-        index = self._columns.index(column)
-        for stale in self._columns[index + 1 :]:
-            self._columns_box.remove(stale)
-        self._columns = self._columns[: index + 1]
-
-        self.refresh_path(column.path)
-        column.select_path(destination)
-
-    def _show_rename_error(self, name: str, output: str, root):
-        body = _('Could not rename "{name}".').format(name=name)
-        if output.strip():
-            body += "\n\n" + output.strip()
-        dialog = Adw.AlertDialog(heading=_("Rename failed"), body=body)
-        dialog.add_response("ok", _("OK"))
-        dialog.present(root)
-
     def _add_to_favorites(self, label: str, path: str):
         """Adds {label, path} to UserSettingsEntity.favorite_list and
         persists it, so it survives an app restart."""
         UserSettingsEntity().add_favorite(label, path)
         UserSettingsApi(self._system_api).save()
         self._on_favorites_changed()
-
-    def _open_with(self, path: str, row):
-        """Popover with a dropdown of every application registered for
-        this file's type, the system default pre-selected, plus a way to
-        browse the full application list for anything not registered."""
-        content_type = self._system_api.get_content_type(path)
-        app_infos = Gio.AppInfo.get_all_for_type(content_type)
-        default_app = Gio.AppInfo.get_default_for_type(content_type, False)
-
-        other_label = _("Other application…")
-        names = [app.get_display_name() or app.get_name() for app in app_infos]
-        names.append(other_label)
-
-        default_index = len(app_infos) - 1 if app_infos else 0
-        if default_app is not None:
-            for i, app in enumerate(app_infos):
-                if app.get_id() == default_app.get_id():
-                    default_index = i
-                    break
-
-        dropdown = Gtk.DropDown.new_from_strings(names)
-        dropdown.set_selected(max(default_index, 0))
-
-        open_button = Gtk.Button(label=_("Open"))
-        open_button.add_css_class("suggested-action")
-
-        cancel_button = Gtk.Button(label=_("Cancel"))
-
-        buttons_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        buttons_box.set_halign(Gtk.Align.END)
-        buttons_box.append(cancel_button)
-        buttons_box.append(open_button)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_margin_top(8)
-        box.set_margin_bottom(8)
-        box.set_margin_start(8)
-        box.set_margin_end(8)
-        box.append(dropdown)
-        box.append(buttons_box)
-
-        popover = Gtk.Popover()
-        popover.set_child(box)
-        popover.set_parent(row)
-        popover.set_autohide(True)
-        popover.connect("closed", lambda p: p.unparent())
-
-        def on_open_clicked(_button):
-            popover.popdown()
-            index = dropdown.get_selected()
-            if 0 <= index < len(app_infos):
-                app_infos[index].launch([Gio.File.new_for_path(path)], None)
-            else:
-                self._open_with_dialog(path, row, content_type)
-
-        open_button.connect("clicked", on_open_clicked)
-        # Filet de sécurité explicite : même si l'autohide/Escape est
-        # perturbé par le popup() différé (voir _popup_deferred), un clic
-        # sur Cancel referme toujours la popover.
-        cancel_button.connect("clicked", lambda _b: popover.popdown())
-        # See _popup_deferred: this popover is opened from inside the
-        # right-click menu's own "Open With…" item activation, so it must
-        # not popup() synchronously either.
-        GLib.idle_add(self._popup_deferred, popover)
-
-    def _open_with_dialog(self, path: str, row, content_type: str):
-        """Fallback full app chooser, for content types with no app
-        already registered (or when the user asks for "Other application")."""
-        dialog = Gtk.AppChooserDialog.new_for_content_type(
-            row.get_root(), Gtk.DialogFlags.MODAL, content_type
-        )
-        dialog.connect("response", self._on_open_with_dialog_response, path)
-        dialog.present()
-
-    def _on_open_with_dialog_response(self, dialog, response, path: str):
-        if response == Gtk.ResponseType.OK:
-            app_info = dialog.get_widget().get_app_info()
-            if app_info is not None:
-                app_info.launch([Gio.File.new_for_path(path)], None)
-        dialog.destroy()

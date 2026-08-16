@@ -3,7 +3,9 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import Gdk, Gtk
+
+from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
 
 
 class SideMenuItem:
@@ -127,32 +129,15 @@ class SideMenuShared(Gtk.ListBox):
         self._show_remove_popover(row, item, x, y)
 
     def _show_remove_popover(self, row, item: SideMenuItem, x: float, y: float):
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        box.add_css_class("menu")
-
-        popover = Gtk.Popover()
-        popover.set_child(box)
-        popover.set_parent(row)
-        popover.set_pointing_to(Gdk.Rectangle(x=int(x), y=int(y), width=1, height=1))
-        popover.set_autohide(True)
-        popover.connect("closed", lambda p: p.unparent())
-
-        remove_button = Gtk.Button(label=_("Remove from favorites"))
-        remove_button.add_css_class("flat")
-        remove_button.add_css_class("destructive-action")
-        remove_button.get_child().set_xalign(0.0)
-
-        def _on_remove_clicked(_button):
-            popover.popdown()
-            # Deferred to the next idle iteration, same reasoning as
-            # PathPage's context menu: dropping the row's item here while
-            # the popover is still closing races its pointer grab.
-            GLib.idle_add(item.on_remove, item.path)
-
-        remove_button.connect("clicked", _on_remove_clicked)
-        box.append(remove_button)
-
-        # See PathPage._popup_deferred: popping up synchronously from
-        # inside the right-click's own "pressed" handler races the pointer
-        # grab that same click still holds.
-        GLib.idle_add(popover.popup)
+        show_context_menu(
+            row,
+            x,
+            y,
+            [
+                ContextMenuItem(
+                    _("Remove from favorites"),
+                    lambda: item.on_remove(item.path),
+                    css_classes=("destructive-action",),
+                )
+            ],
+        )
