@@ -1,0 +1,95 @@
+import gi
+
+gi.require_version("Gtk", "4.0")
+
+from gi.repository import GLib, Gtk
+
+from infrastructure.ui.shared.popup_shared import popup_deferred
+
+SWATCH_SIZE = 28
+_COLUMNS = 4
+
+# (label, hex) — GNOME's standard tag-color palette (same set Nautilus's
+# "Mark as favorite"/color-tag picker uses). Labels stay untranslated
+# here and only go through _() at call time in show_color_picker_popup:
+# this list is built at *module import* time, which happens before
+# main() installs gettext's _() as a builtin — translating eagerly here
+# would raise NameError on startup.
+_PALETTE = [
+    ("Red", "#e01b24"),
+    ("Orange", "#ff7800"),
+    ("Yellow", "#f6d32d"),
+    ("Green", "#2ec27e"),
+    ("Blue", "#3584e4"),
+    ("Purple", "#9141ac"),
+    ("Brown", "#986a44"),
+    ("Gray", "#77767b"),
+]
+
+
+def show_color_picker_popup(parent_widget, on_color_selected):
+    """A small grid popover of color swatches, with a full-width "Remove
+    Color" button below it. on_color_selected(hex) is called once, right
+    after the popover starts closing — with None for "Remove Color"."""
+    container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    container.set_margin_top(10)
+    container.set_margin_bottom(10)
+    container.set_margin_start(10)
+    container.set_margin_end(10)
+
+    grid = Gtk.Grid()
+    grid.set_row_spacing(6)
+    grid.set_column_spacing(6)
+    container.append(grid)
+
+    popover = Gtk.Popover()
+    popover.set_child(container)
+    popover.set_parent(parent_widget)
+    popover.set_autohide(True)
+    popover.connect("closed", lambda p: p.unparent())
+
+    def _select(color):
+        popover.popdown()
+        GLib.idle_add(on_color_selected, color)
+
+    for index, (label, hex_color) in enumerate(_PALETTE):
+        swatch = _build_swatch(_(label), hex_color)
+        swatch.connect("clicked", lambda _b, color=hex_color: _select(color))
+        grid.attach(swatch, index % _COLUMNS, index // _COLUMNS, 1, 1)
+
+    none_button = _build_none_button()
+    none_button.connect("clicked", lambda _b: _select(None))
+    container.append(none_button)
+
+    # See popup_deferred: this popover is opened from inside the
+    # right-click menu's own "Add Color" item activation, so it must not
+    # popup() synchronously either.
+    GLib.idle_add(popup_deferred, popover)
+
+
+def _build_swatch(label: str, hex_color: str) -> Gtk.Button:
+    swatch = Gtk.Button()
+    swatch.set_tooltip_text(label)
+    swatch.add_css_class("circular")
+    swatch.set_size_request(SWATCH_SIZE, SWATCH_SIZE)
+
+    provider = Gtk.CssProvider()
+    provider.load_from_data(
+        f"""
+        button {{
+            background: {hex_color};
+            min-width: {SWATCH_SIZE}px;
+            min-height: {SWATCH_SIZE}px;
+        }}
+        """.encode()
+    )
+    swatch.get_style_context().add_provider(
+        provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+    return swatch
+
+
+def _build_none_button() -> Gtk.Button:
+    button = Gtk.Button(label=_("Remove Color"))
+    button.add_css_class("flat")
+    return button

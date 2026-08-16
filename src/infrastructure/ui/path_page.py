@@ -10,11 +10,31 @@ from domain.entity.user_settings_entity import UserSettingsEntity
 from domain.UseCase.list_directory_uc import ListDirectoryUc
 from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
+from infrastructure.ui.shared.color_picker_popup import show_color_picker_popup
+from infrastructure.ui.shared.confirm_dialog import show_confirm_dialog
 from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
 from infrastructure.ui.shared.open_with_popup import show_open_with_popup
 from infrastructure.ui.shared.rename_dialog import show_rename_dialog
 
 COLUMN_WIDTH = 260
+_COLOR_DOT_SIZE = 10
+
+
+def _build_color_dot(color: str) -> Gtk.Widget:
+    """Small round swatch shown next to a row tagged via the "Add Color"
+    context menu entry (see PathPage._set_color)."""
+    dot = Gtk.Box()
+    dot.set_size_request(_COLOR_DOT_SIZE, _COLOR_DOT_SIZE)
+    dot.set_valign(Gtk.Align.CENTER)
+
+    provider = Gtk.CssProvider()
+    provider.load_from_data(
+        f"box {{ background: {color}; border-radius: 999px; }}".encode()
+    )
+    dot.get_style_context().add_provider(
+        provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+    return dot
 
 
 class _Column(Gtk.Frame):
@@ -55,7 +75,9 @@ class _Column(Gtk.Frame):
 
         self.set_child(self._stack)
 
-    def set_entries(self, entry_list):
+    def set_entries(self, entry_list, color_map: dict | None = None):
+        color_map = color_map or {}
+
         child = self._list_box.get_first_child()
         while child is not None:
             next_child = child.get_next_sibling()
@@ -68,6 +90,9 @@ class _Column(Gtk.Frame):
             row.set_title_lines(1)
             row.set_activatable(True)
             row.add_prefix(Gtk.Image.new_from_icon_name(entry.get_icon_name()))
+            color = color_map.get(entry.name)
+            if color:
+                row.add_suffix(_build_color_dot(color))
             if entry.is_dir:
                 row.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
             row.entry = entry
@@ -156,7 +181,7 @@ class PathPage(Gtk.Box):
         writes a new file into it."""
         for column in self._columns:
             if column.path == path:
-                column.set_entries(self._list_directory_uc.get_entry_list(path))
+                self._set_column_entries(column, path)
 
     def load_path_chain(self, path: str):
         """Reset the whole view, rebuilding one column per path segment
@@ -210,7 +235,7 @@ class PathPage(Gtk.Box):
             self._on_row_double_clicked,
             self._on_row_context_menu,
         )
-        column.set_entries(self._list_directory_uc.get_entry_list(parent_path))
+        self._set_column_entries(column, parent_path)
         column.select_path(leftmost_path)
         self._columns.insert(0, column)
         self._columns_box.insert_child_after(column, None)
@@ -223,9 +248,15 @@ class PathPage(Gtk.Box):
         column = _Column(
             path, self._on_row_activated, self._on_row_double_clicked, self._on_row_context_menu
         )
-        column.set_entries(self._list_directory_uc.get_entry_list(path))
+        self._set_column_entries(column, path)
         self._columns.append(column)
         self._columns_box.append(column)
+
+    def _set_column_entries(self, column: _Column, path: str):
+        column.set_entries(
+            self._list_directory_uc.get_entry_list(path),
+            self._system_api.get_colored_path_map(path),
+        )
 
     def _on_row_activated(self, column: _Column, row):
         """Fires on every single click (GtkListBox's own activation).
@@ -248,10 +279,7 @@ class PathPage(Gtk.Box):
         if entry is None:
             return
 
-        index = self._columns.index(column)
-        for stale in self._columns[index + 1 :]:
-            self._columns_box.remove(stale)
-        self._columns = self._columns[: index + 1]
+        self._drop_stale_columns(column)
 
         if not entry.is_dir:
             self._system_api.open_path(entry.path)
@@ -321,8 +349,41 @@ class PathPage(Gtk.Box):
                 ),
             )
         )
+        item_list.append(
+            ContextMenuItem(
+                _("Add Color"),
+                lambda: show_color_picker_popup(
+                    row, lambda color: self._set_color(entry, color)
+                ),
+            )
+        )
+        item_list.append(
+            ContextMenuItem(
+                _("Move to Trash"),
+                lambda: show_confirm_dialog(
+                    row.get_root(),
+                    _("Move to Trash?"),
+                    _('"{name}" will be moved to the Trash.').format(name=entry.name),
+                    _("Move to Trash"),
+                    lambda: self._trash_entry(column, entry, row),
+                ),
+                css_classes=("destructive-action",),
+            )
+        )
 
         show_context_menu(row, x, y, item_list)
+
+    def _set_color(self, entry, color: str | None):
+        """Tags `entry` with `color`, or untags it if color is None (the
+        "Remove Color" entry) — stored in a .dupotFileBrowser sidecar
+        JSON file in its parent directory (see SystemApi.add_colored_path
+        /remove_colored_path)."""
+        parent = self._system_api.get_parent_dir(entry.path)
+        if color is None:
+            self._system_api.remove_colored_path(parent, entry.name)
+        else:
+            self._system_api.add_colored_path(parent, entry.name, color)
+        self.refresh_path(parent)
 
     def _on_renamed(self, column: _Column, destination: str):
         """Called by rename_dialog once the rename actually happened on
@@ -330,13 +391,36 @@ class PathPage(Gtk.Box):
         already open on it — drop those, same as _open_entry does when a
         row's underlying folder changes — then refresh the parent column
         and reselect the entry under its new name."""
+        self._drop_stale_columns(column)
+        self.refresh_path(column.path)
+        column.select_path(destination)
+
+    def _trash_entry(self, column: _Column, entry, row):
+        if not self._system_api.trash_path(entry.path):
+            self._show_trash_error(entry.name, row.get_root())
+            return
+
+        # Same reasoning as _on_renamed: the entry is gone, so any column
+        # already open on it (if it was a directory) is now stale.
+        self._drop_stale_columns(column)
+        self.refresh_path(column.path)
+
+    def _show_trash_error(self, name: str, root):
+        dialog = Adw.AlertDialog(
+            heading=_("Could not move to Trash"),
+            body=_('"{name}" could not be moved to the Trash.').format(name=name),
+        )
+        dialog.add_response("ok", _("OK"))
+        dialog.present(root)
+
+    def _drop_stale_columns(self, column: _Column):
+        """Removes every column to the right of `column` — used whenever
+        the entry a column's row pointed at has just been renamed, moved,
+        or trashed, so a stale further column can't stay open on it."""
         index = self._columns.index(column)
         for stale in self._columns[index + 1 :]:
             self._columns_box.remove(stale)
         self._columns = self._columns[: index + 1]
-
-        self.refresh_path(column.path)
-        column.select_path(destination)
 
     def _copy_to_clipboard(self, path: str, cut: bool, name: str | None = None):
         """Puts the file/folder on the system clipboard the same way

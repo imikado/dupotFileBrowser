@@ -15,6 +15,7 @@ from infrastructure.api.user_settings_api import UserSettingsApi
 from infrastructure.ui.menu.parameters_dialog import ParametersDialog
 from infrastructure.ui.path_page import PathPage
 from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShared
+from infrastructure.ui.trash_page import TrashPage
 
 APP_ID = "org.dupot.filebrowser"
 APP_VERSION = "1.0.0"
@@ -31,6 +32,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._system_api = SystemApi()
         self._settings = UserSettingsEntity()
         self._home_path = self._system_api.get_home_dir()
+        self._trash_path = self._system_api.get_trash_dir()
         self._current_path = self._home_path
 
         toolbar_view = Adw.ToolbarView()
@@ -111,9 +113,20 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self._path_page.set_hexpand(True)
 
+        self._trash_page = TrashPage(self._system_api)
+        self._trash_page.set_hexpand(True)
+
+        # Switched between the Miller-column browser and the flat Trash
+        # list — they're different enough UI paradigms (see TrashPage)
+        # that reusing PathPage's columns for the Trash wouldn't work.
+        self._main_stack = Gtk.Stack()
+        self._main_stack.set_hexpand(True)
+        self._main_stack.add_named(self._path_page, "browser")
+        self._main_stack.add_named(self._trash_page, "trash")
+
         body.append(sidebar_scroll)
         body.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        body.append(self._path_page)
+        body.append(self._main_stack)
 
         toolbar_view.set_content(body)
         self.set_content(toolbar_view)
@@ -126,6 +139,9 @@ class MainWindow(Adw.ApplicationWindow):
         items = [
             SideMenuItem(
                 "user-home-symbolic", _("Home"), self._home_path, self._go_to_path
+            ),
+            SideMenuItem(
+                "user-trash-symbolic", _("Trash"), self._trash_path, self._go_to_trash
             ),
         ]
         if self._settings.favorite_list:
@@ -357,8 +373,21 @@ class MainWindow(Adw.ApplicationWindow):
     def _go_to_path(self, path: str):
         """Full reset: used for sidebar navigation and the initial load,
         collapses back down to a single Miller column showing `path`."""
+        self._main_stack.set_visible_child_name("browser")
+        self._path_entry.set_sensitive(True)
         self._update_path_state(path)
         self._path_page.load_path(path)
+
+    def _go_to_trash(self, _path: str):
+        """Sidebar "Trash" entry: swaps the browser out for TrashPage
+        instead of navigating PathPage anywhere — the Trash isn't a real,
+        Miller-column-navigable folder (see TrashPage)."""
+        self._main_stack.set_visible_child_name("trash")
+        self._trash_page.refresh()
+        self._path_entry.set_text(_("Trash"))
+        self._path_entry.set_sensitive(False)
+        self._up_button.set_sensitive(False)
+        self._side_menu.set_selected_path(self._trash_path)
 
     def _on_path_changed(self, path: str):
         """Called by PathPage when the deepest open column changes because
