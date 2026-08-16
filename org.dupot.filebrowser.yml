@@ -1,13 +1,16 @@
 app-id: org.dupot.filebrowser
 runtime: org.gnome.Platform
-runtime-version: "47"
+runtime-version: "49"
 sdk: org.gnome.Sdk
 command: dupot_file_browser
 
 finish-args:
-  # Full access to the user's home — this is a file browser, its whole
-  # purpose is to list and open files there.
-  - --filesystem=home
+  # Full host filesystem access — the Miller-column browser navigates
+  # from filesystem root down (see path_page.py's _ancestor_chain) and
+  # the up-button stays enabled until "/", so this isn't a home-only
+  # browser: it needs to see other mounts too (/mnt, /media,
+  # /run/media/<user>, other partitions), not just $HOME.
+  - --filesystem=host
   # Needed for the "open file with default app" action (goes through the
   # portal in infrastructure/api/system_api.py, not a raw exec).
   - --talk-name=org.freedesktop.portal.Desktop
@@ -39,6 +42,7 @@ modules:
       # File-type row icons — baked PNGs (see file_icons.py), not looked
       # up by name in the host's icon theme.
       - cp -r assets/icons /app/lib/assets/icons
+      - mkdir -p /app/bin
       - |
         cat > /app/bin/dupot_file_browser <<'EOF'
         #!/bin/sh

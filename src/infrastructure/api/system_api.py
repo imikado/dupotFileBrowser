@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import urllib.parse
+from datetime import datetime
 
 import gi
 
@@ -129,25 +130,65 @@ class SystemApi(SystemApiContract):
     def get_move_call(self, source: str, destination: str) -> list:
         return self._cmd("mv", "--", source, destination)
 
+    def _get_real_trash_base_dir(self) -> str:
+        # Deliberately NOT GLib.get_user_data_dir(): under Flatpak that
+        # resolves $XDG_DATA_HOME, which Flatpak always redirects to the
+        # app's private ~/.var/app/<id>/data regardless of --filesystem
+        # grants — so trash written/read there is invisible to (and
+        # doesn't see) the host's real Trash used by Nautilus/Nemo/etc.
+        # self.get_home_dir() returns the real $HOME untouched by that
+        # redirection (verified: still /home/<user> inside the sandbox),
+        # so anchor Trash off that instead, same as every other desktop
+        # file manager's default XDG_DATA_HOME.
+        return os.path.join(self.get_home_dir(), ".local", "share", "Trash")
+
     def get_trash_dir(self) -> str:
-        # Where trash_path() actually puts things — the XDG trash spec's
-        # "files" subfolder for the home data dir (GLib.get_user_data_dir
-        # already resolves $XDG_DATA_HOME with the right fallback).
-        return os.path.join(GLib.get_user_data_dir(), "Trash", "files")
+        # Where trash_path() actually puts things (the XDG trash spec's
+        # "files" subfolder).
+        return os.path.join(self._get_real_trash_base_dir(), "files")
+
+    def _unique_trashed_name(self, files_dir: str, name: str) -> str:
+        # freedesktop.org Trash spec: on a name collision, the
+        # implementation must pick another unique name rather than
+        # overwrite — mirrors the "name.2", "name.3", ... scheme other
+        # file managers use.
+        candidate = name
+        base, ext = os.path.splitext(name)
+        counter = 2
+        while os.path.exists(os.path.join(files_dir, candidate)):
+            candidate = f"{base}.{counter}{ext}"
+            counter += 1
+        return candidate
 
     def trash_path(self, path: str) -> bool:
-        # Gio.File.trash() follows the XDG trash spec (moves into
-        # ~/.local/share/Trash or the target filesystem's top-level
-        # .Trash, recoverable from any Files app) rather than deleting
-        # outright — no flatpak-spawn needed, it's plain GIO I/O within
-        # --filesystem=home.
+        # Moves into the real ~/.local/share/Trash (files/ + a matching
+        # info/*.trashinfo), by hand rather than via Gio.File.trash() —
+        # GIO's trash() resolves the same sandboxed XDG_DATA_HOME as
+        # GLib.get_user_data_dir() (see _get_real_trash_base_dir), so it
+        # would write into the app's private Trash instead of the host's.
         try:
-            return Gio.File.new_for_path(path).trash(None)
-        except GLib.Error:
+            files_dir = self.get_trash_dir()
+            info_dir = self._get_trash_info_dir()
+            os.makedirs(files_dir, exist_ok=True)
+            os.makedirs(info_dir, exist_ok=True)
+
+            name = self._unique_trashed_name(files_dir, os.path.basename(path.rstrip("/")))
+            trashed_path = os.path.join(files_dir, name)
+            shutil.move(path, trashed_path)
+
+            parser = configparser.ConfigParser(interpolation=None)
+            parser["Trash Info"] = {
+                "Path": urllib.parse.quote(path),
+                "DeletionDate": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            }
+            with open(os.path.join(info_dir, name + ".trashinfo"), "w", encoding="utf-8") as info_file:
+                parser.write(info_file)
+            return True
+        except (OSError, shutil.Error):
             return False
 
     def _get_trash_info_dir(self) -> str:
-        return os.path.join(GLib.get_user_data_dir(), "Trash", "info")
+        return os.path.join(self._get_real_trash_base_dir(), "info")
 
     def list_trash(self) -> list[TrashEntryEntity]:
         # Reads Trash/files + Trash/info/*.trashinfo directly (the same
