@@ -10,6 +10,10 @@ class SystemApiContract(ABC):
         pass
 
     @abstractmethod
+    def is_dir(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
     def read_json_file_obj(self, path: str) -> object:
         pass
 
@@ -35,4 +39,12 @@ class SystemApiContract(ABC):
 
     @abstractmethod
     def open_path(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
+    def get_uri(self, path: str) -> str:
+        pass
+
+    @abstractmethod
+    def get_content_type(self, path: str) -> str:
         pass

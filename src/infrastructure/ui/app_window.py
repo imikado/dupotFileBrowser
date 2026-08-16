@@ -2,9 +2,8 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-gi.require_version("Pango", "1.0")
 
-from gi.repository import Adw, Gio, Gtk, Pango
+from gi.repository import Adw, Gio, Gtk
 
 from domain.entity.user_settings_entity import UserSettingsEntity
 from infrastructure.api.system_api import SystemApi
@@ -41,11 +40,13 @@ class MainWindow(Adw.ApplicationWindow):
         self._up_button.connect("clicked", self._on_up_clicked)
         header_bar.pack_start(self._up_button)
 
-        self._path_label = Gtk.Label()
-        self._path_label.set_ellipsize(Pango.EllipsizeMode.START)
-        self._path_label.set_single_line_mode(True)
-        self._path_label.add_css_class("heading")
-        header_bar.set_title_widget(self._path_label)
+        self._path_entry = Gtk.Entry()
+        self._path_entry.set_hexpand(True)
+        self._path_entry.add_css_class("flat")
+        self._path_entry.set_tooltip_text(_("Type a path and press Enter to go there"))
+        self._path_entry.connect("activate", self._on_path_entry_activate)
+        self._path_entry.connect("changed", self._on_path_entry_changed)
+        header_bar.set_title_widget(self._path_entry)
 
         self._dark_mode_button = Gtk.Button()
         self._dark_mode_button.connect("clicked", self._on_toggle_dark_mode)
@@ -117,17 +118,26 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _update_path_state(self, path: str):
         self._current_path = path
-        self._path_label.set_label(path)
-        self._path_label.set_tooltip_text(path)
+        self._path_entry.set_text(path)
+        self._path_entry.remove_css_class("error")
         self._up_button.set_sensitive(path not in ("/", ""))
         self._side_menu.set_selected_path(path)
 
     def _on_up_clicked(self, _button):
-        popped_path = self._path_page.pop_column()
-        if popped_path is not None:
-            self._update_path_state(popped_path)
+        # Reveals the enclosing folder as a new leftmost column; never
+        # drops any column that's already open (see PathPage.prepend_parent).
+        self._path_page.prepend_parent()
+
+    def _on_path_entry_activate(self, entry):
+        path = entry.get_text().strip()
+        if path and self._system_api.is_dir(path):
+            self._update_path_state(path)
+            self._path_page.load_path_chain(path)
         else:
-            self._go_to_path(self._system_api.get_parent_dir(self._current_path))
+            entry.add_css_class("error")
+
+    def _on_path_entry_changed(self, entry):
+        entry.remove_css_class("error")
 
     def _on_toggle_dark_mode(self, _button):
         if self._settings.use_theme_dark():

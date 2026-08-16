@@ -16,6 +16,9 @@ class SystemApi(SystemApiContract):
     def file_exists(self, path: str) -> bool:
         return os.path.exists(path)
 
+    def is_dir(self, path: str) -> bool:
+        return os.path.isdir(path)
+
     def read_json_file_obj(self, path: str) -> object:
         with open(path, "r") as file:
             return json.load(file)
@@ -57,3 +60,15 @@ class SystemApi(SystemApiContract):
             return Gio.AppInfo.launch_default_for_uri(uri, None)
         except GLib.Error:
             return False
+
+    def get_uri(self, path: str) -> str:
+        return Gio.File.new_for_path(path).get_uri()
+
+    def get_content_type(self, path: str) -> str:
+        try:
+            info = Gio.File.new_for_path(path).query_info(
+                "standard::content-type", Gio.FileQueryInfoFlags.NONE, None
+            )
+            return info.get_content_type() or "application/octet-stream"
+        except GLib.Error:
+            return "application/octet-stream"
