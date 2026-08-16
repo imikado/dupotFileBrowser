@@ -21,16 +21,30 @@
   <summary xml:lang="it">Un semplice ed essenziale esplora file</summary>
 
   <description>
-    <p>Browse your home folder and navigate into subfolders with a simple, uncluttered GTK4/libadwaita interface.</p>
+    <p>Browse your home folder and navigate by column with a simple, uncluttered GTK4/libadwaita interface.</p>
     <p>Click a folder to open it, click a file to open it with its default application.</p>
-    <p>Available in English, French and Italian.</p>
+    <p>Available in English and French.</p>
   </description>
 
   <screenshots>
     <screenshot type="default">
-      <image>http</image>
+      <image>https://raw.githubusercontent.com/imikado/dupotFileBrowser/refs/heads/mainPython/export/screenshots/homepage.png</image>
       <caption>Home folder</caption>
     </screenshot>
+
+
+    <screenshot>
+      <image>https://raw.githubusercontent.com/imikado/dupotFileBrowser/refs/heads/mainPython/export/screenshots/columns_navigation.png</image>
+      <caption>Navigation by column</caption>
+    </screenshot>
+
+
+    <screenshot>
+      <image>https://raw.githubusercontent.com/imikado/dupotFileBrowser/refs/heads/mainPython/export/screenshots/path_editable.png</image>
+      <caption>Path is editable</caption>
+    </screenshot>
+
+
   </screenshots>
 
   <url type="homepage">https://www.dupot.org</url>
