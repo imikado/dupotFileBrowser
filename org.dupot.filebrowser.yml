@@ -1,0 +1,50 @@
+app-id: org.dupot.filebrowser
+runtime: org.gnome.Platform
+runtime-version: "47"
+sdk: org.gnome.Sdk
+command: dupot_file_browser
+
+finish-args:
+  # Full access to the user's home — this is a file browser, its whole
+  # purpose is to list and open files there.
+  - --filesystem=home
+  # Needed for the "open file with default app" action (goes through the
+  # portal in infrastructure/api/system_api.py, not a raw exec).
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.portal.OpenURI
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+
+modules:
+  - name: dupot-file-browser
+    buildsystem: simple
+    build-commands:
+      - install -D src/main.py /app/lib/dupot_file_browser/main.py
+      - cp -r src/domain /app/lib/dupot_file_browser/domain
+      - cp -r src/infrastructure /app/lib/dupot_file_browser/infrastructure
+      # assets/ must stay a sibling of dupot_file_browser/ (which replaces
+      # src/) — domain/conf/path_conf.py resolves it as ../../../assets
+      # relative to itself, same depth in the source tree and here.
+      - install -D assets/logos/512x512.png /app/lib/assets/logos/512x512.png
+      - install -D assets/logos/logodupot.svg /app/lib/assets/logos/logodupot.svg
+      - |
+        cat > /app/bin/dupot_file_browser <<'EOF'
+        #!/bin/sh
+        exec python3 /app/lib/dupot_file_browser/main.py "$@"
+        EOF
+      - chmod +x /app/bin/dupot_file_browser
+      - install -D export/flatpak/org.dupot.filebrowser.desktop /app/share/applications/org.dupot.filebrowser.desktop
+      - install -D export/flatpak/org.dupot.filebrowser.appdata.xml /app/share/metainfo/org.dupot.filebrowser.appdata.xml
+      - install -D export/flatpak/16x16.png /app/share/icons/hicolor/16x16/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/24x24.png /app/share/icons/hicolor/24x24/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/32x32.png /app/share/icons/hicolor/32x32/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/48x48.png /app/share/icons/hicolor/48x48/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/64x64.png /app/share/icons/hicolor/64x64/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/128x128.png /app/share/icons/hicolor/128x128/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/256x256.png /app/share/icons/hicolor/256x256/apps/org.dupot.filebrowser.png
+      - install -D export/flatpak/512x512.png /app/share/icons/hicolor/512x512/apps/org.dupot.filebrowser.png
+    sources:
+      - type: dir
+        path: .

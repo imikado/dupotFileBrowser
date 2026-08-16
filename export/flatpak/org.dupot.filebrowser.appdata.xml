@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.dupot.filebrowser</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LGPL-2.1-only</project_license>
+  <name>File Browser</name>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#96aff8</color>
+    <color type="primary" scheme_preference="dark">#122355</color>
+  </branding>
+
+  <launchable type="desktop-id">org.dupot.filebrowser.desktop</launchable>
+
+  <developer id="michael.bertocchi">
+    <name>Michael Bertocchi</name>
+  </developer>
+
+  <summary>A simple, lightweight file browser</summary>
+  <summary xml:lang="fr">Un explorateur de fichiers simple et léger</summary>
+  <summary xml:lang="it">Un semplice ed essenziale esplora file</summary>
+
+  <description>
+    <p>Browse your home folder and navigate into subfolders with a simple, uncluttered GTK4/libadwaita interface.</p>
+    <p>Click a folder to open it, click a file to open it with its default application.</p>
+    <p>Available in English, French and Italian.</p>
+  </description>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Home folder</caption>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://www.dupot.org</url>
+  <url type="vcs-browser">https://github.com/imikado/dupotFileBrowser/</url>
+  <update_contact>imikado@gmail.com</update_contact>
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release date="2026-08-16" version="1.0.0">
+      <description>
+        <ul>
+          <li>Rewrite from Flutter to Python GTK4/libadwaita</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

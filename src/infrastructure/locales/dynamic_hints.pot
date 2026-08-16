@@ -1,0 +1,25 @@
+# Strings passed as variables to _() (theme/language choice labels in
+# domain/entity/user_settings_entity.py) — xgettext can't see them since
+# they aren't literal string arguments. Kept here so generate_translations.sh
+# can merge them into the real .pot.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "dark"
+msgstr ""
+
+msgid "light"
+msgstr ""
+
+msgid "system"
+msgstr ""
+
+msgid "english"
+msgstr ""
+
+msgid "french"
+msgstr ""
+
+msgid "italian"
+msgstr ""

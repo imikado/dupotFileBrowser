@@ -1,0 +1,8 @@
+*__pycache__*
+*.pyc
+.env
+.vscode/launch.json
+.flatpak-builder/
+build-dir/
+repo/
+*.flatpak

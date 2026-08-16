@@ -1,0 +1,86 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the dupot_file_browser package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: dupot_file_browser\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-16 09:34+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/infrastructure/ui/app_window.py:25
+#: src/infrastructure/ui/app_window.py:153
+msgid "File browser"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:40
+msgid "Parent folder"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:55
+#: src/infrastructure/ui/menu/parameters_dialog.py:19
+msgid "Parameters"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:56
+msgid "About"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:101
+msgid "Home"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:141
+msgid "Switch to light mode"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:141
+msgid "Switch to dark mode"
+msgstr ""
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:29
+msgid "Appearance"
+msgstr ""
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:34
+msgid "Theme"
+msgstr ""
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:45
+msgid "Language"
+msgstr ""
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:57
+msgid "Save"
+msgstr ""
+
+#: src/infrastructure/ui/path_page.py:38
+msgid "Empty folder"
+msgstr ""
+
+msgid "dark"
+msgstr ""
+
+msgid "light"
+msgstr ""
+
+msgid "system"
+msgstr ""
+
+msgid "english"
+msgstr ""
+
+msgid "french"
+msgstr ""
+
+msgid "italian"
+msgstr ""

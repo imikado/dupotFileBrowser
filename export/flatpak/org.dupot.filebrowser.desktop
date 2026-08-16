@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=File Browser
+Name[fr]=Explorateur de fichiers
+Name[it]=Esplora file
+Comment=Browse your files
+Comment[fr]=Parcourez vos fichiers
+Comment[it]=Sfoglia i tuoi file
+Exec=dupot_file_browser
+StartupWMClass=dupot_file_browser
+Type=Application
+Icon=org.dupot.filebrowser
+Categories=Utility;FileTools;FileManager;
+Terminal=false

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Generate translation files for dupot_file_browser
+# Usage: ./generate_translations.sh
+#
+# Steps:
+#   1. Extract all _("...") strings from Python sources → dupot_file_browser.pot
+#   2. Merge the pot into each existing .po file
+#   3. Compile every .po → .mo
+
+set -euo pipefail
+
+DOMAIN="dupot_file_browser"
+SRC_DIR="src"
+LOCALES_DIR="src/infrastructure/locales"
+POT_FILE="$LOCALES_DIR/$DOMAIN.pot"
+
+LANGUAGES=(en fr it)
+
+echo "=== Extracting strings from Python sources ==="
+find "$SRC_DIR" -name "*.py" | sort | xgettext \
+    --language=Python \
+    --keyword=_ \
+    --from-code=UTF-8 \
+    --output="$POT_FILE" \
+    --package-name="$DOMAIN" \
+    --files-from=-
+
+echo "  → $POT_FILE"
+
+# Merge dynamic hints (strings passed as variables to _()) into the pot
+DYNAMIC_HINTS="$LOCALES_DIR/dynamic_hints.pot"
+if [ -f "$DYNAMIC_HINTS" ]; then
+    echo "=== Merging dynamic hints ==="
+    msgcat --use-first "$POT_FILE" "$DYNAMIC_HINTS" -o "$POT_FILE"
+    echo "  → merged $DYNAMIC_HINTS"
+fi
+
+for LANG in "${LANGUAGES[@]}"; do
+    PO_FILE="$LOCALES_DIR/$LANG/LC_MESSAGES/$DOMAIN.po"
+    MO_FILE="$LOCALES_DIR/$LANG/LC_MESSAGES/$DOMAIN.mo"
+
+    echo ""
+    echo "=== [$LANG] ==="
+
+    if [ -f "$PO_FILE" ]; then
+        echo "  Merging new strings into existing .po"
+        msgmerge --update --no-fuzzy-matching --backup=none "$PO_FILE" "$POT_FILE"
+    else
+        echo "  Creating new .po from template"
+        mkdir -p "$(dirname "$PO_FILE")"
+        msginit \
+            --input="$POT_FILE" \
+            --locale="$LANG" \
+            --output="$PO_FILE" \
+            --no-translator
+    fi
+
+    echo "  Compiling → $MO_FILE"
+    msgfmt --output-file="$MO_FILE" "$PO_FILE"
+done
+
+echo ""
+echo "Done."
