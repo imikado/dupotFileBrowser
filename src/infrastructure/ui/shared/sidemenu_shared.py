@@ -6,11 +6,12 @@ gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gtk
 
 from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
+from infrastructure.ui.shared.file_icons import build_icon_image
 
 
 class SideMenuItem:
-    def __init__(self, icon_name: str, label: str, path: str, on_activate, on_remove=None):
-        self.icon_name = icon_name
+    def __init__(self, icon_key: str, label: str, path: str, on_activate, on_remove=None):
+        self.icon_key = icon_key
         self.label = label
         self.path = path
         self.on_activate = on_activate
@@ -83,7 +84,7 @@ class SideMenuShared(Gtk.ListBox):
         box.set_margin_bottom(8)
         box.set_margin_start(12)
         box.set_margin_end(12)
-        box.append(Gtk.Image.new_from_icon_name(item.icon_name))
+        box.append(build_icon_image(item.icon_key))
 
         label = Gtk.Label(label=item.label)
         label.set_halign(Gtk.Align.START)

@@ -18,5 +18,5 @@ class TrashEntryEntity:
         self.deletion_date = deletion_date
         self.is_dir = is_dir
 
-    def get_icon_name(self) -> str:
-        return "folder-symbolic" if self.is_dir else "text-x-generic-symbolic"
+    def get_icon_key(self) -> str:
+        return "folder" if self.is_dir else "generic"

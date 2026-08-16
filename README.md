@@ -30,6 +30,7 @@ src/
     ui/                            AppWindow, PathPage, ParametersDialog, sidebar
     locales/                       gettext .po/.mo per language
 assets/logos/                      app icon
+assets/icons/{light,dark}/         file-type row icons (baked PNGs, not looked up in the host icon theme)
 export/flatpak/                    desktop file, appdata.xml, icon set
 org.dupot.filebrowser.yml          flatpak-builder manifest
 ```

@@ -15,6 +15,10 @@ finish-args:
   # flatpak-spawn --host, used by SystemApi._cmd to run "cp" on the host
   # for paste jobs (see infrastructure/ui/app_window.py's paste queue).
   - --talk-name=org.freedesktop.Flatpak
+  # gvfsd-metadata, so set_folder_color()/get_folder_color() can read
+  # and write "metadata::custom-icon" — the same GVFS per-filesystem
+  # metadata store Nemo's "Folder Color" uses, for cross-app compat.
+  - --talk-name=org.gtk.vfs.Metadata
   - --socket=wayland
   - --socket=fallback-x11
   - --share=ipc
@@ -32,6 +36,9 @@ modules:
       # relative to itself, same depth in the source tree and here.
       - install -D assets/logos/512x512.png /app/lib/assets/logos/512x512.png
       - install -D assets/logos/logodupot.svg /app/lib/assets/logos/logodupot.svg
+      # File-type row icons — baked PNGs (see file_icons.py), not looked
+      # up by name in the host's icon theme.
+      - cp -r assets/icons /app/lib/assets/icons
       - |
         cat > /app/bin/dupot_file_browser <<'EOF'
         #!/bin/sh

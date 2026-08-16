@@ -1,6 +1,7 @@
 import configparser
 import json
 import os
+import re
 import shutil
 import urllib.parse
 
@@ -18,6 +19,32 @@ METADATA_FILENAME = ".dupotFileBrowser"
 FIELD_COLORED_PATH_LIST = "coloredPathList"
 FIELD_COLORED_PATH_NAME = "name"
 FIELD_COLORED_PATH_COLOR = "color"
+
+# Mirrors /usr/share/folder-color-switcher/colors.d/Mint-Y.json — the
+# exact palette Cinnamon/Nemo's "Folder Color" context menu entry uses on
+# Linux Mint (the active icon theme is "Mint-Y" + a colored variant, e.g.
+# "Mint-Y-Teal"). Folders colored here read back identically in Nemo (and
+# vice versa) since both write the same GIO "metadata::custom-icon"
+# attribute — see set_folder_color/get_folder_color.
+NEMO_FOLDER_COLOR_THEMES = {
+    "#5294e2": "Mint-Y-Blue",
+    "#004988": "Mint-Y-Navy",
+    "#57b8ec": "Mint-Y-Aqua",
+    "#45abb7": "Mint-Y-Teal",
+    "#00bcd4": "Mint-Y-Cyan",
+    "#50c16f": "Mint-Y",  # "Green" is Mint-Y's own default, no suffix
+    "#f9c470": "Mint-Y-Sand",
+    "#aaaaaa": "Mint-Y-Grey",
+    "#ff804f": "Mint-Y-Orange",
+    "#ff7446": "Mint-Y-Yaru",
+    "#f54f54": "Mint-Y-Red",
+    "#f26a9a": "Mint-Y-Pink",
+    "#a27ae4": "Mint-Y-Purple",
+}
+_NEMO_THEME_TO_COLOR = {theme: hex_color for hex_color, theme in NEMO_FOLDER_COLOR_THEMES.items()}
+_NEMO_ICON_SIZE = 48
+_NEMO_CUSTOM_ICON_ATTRIBUTE = "metadata::custom-icon"
+_NEMO_ICON_URI_RE = re.compile(r"/(Mint-Y(?:-[A-Za-z]+)?)/places/\d+(?:@2x)?/folder[^/]*\.png$")
 
 
 class SystemApi(SystemApiContract):
@@ -262,3 +289,84 @@ class SystemApi(SystemApiContract):
             if name and color:
                 color_map[name] = color
         return color_map
+
+    def set_folder_color(self, directory: str, color: str | None) -> bool:
+        """Sets/unsets `directory`'s own icon color the way Nemo's
+        "Folder Color" context menu entry does — via the GVFS
+        "metadata::custom-icon" attribute — when that mechanism is
+        available (needs gvfsd-metadata reachable; on a Flatpak build,
+        --talk-name=org.gtk.vfs.Metadata). Otherwise falls back to the
+        same .dupotFileBrowser sidecar files use (add_colored_path
+        /remove_colored_path, keyed on this folder's own name in *its*
+        parent), so coloring still works even without GVFS metadata —
+        just without the Nemo cross-compatibility. Either way,
+        get_folder_color finds it again."""
+        parent = self.get_parent_dir(directory)
+        name = os.path.basename(directory.rstrip("/"))
+
+        if self._set_folder_color_metadata(directory, color):
+            # Metadata is authoritative once available — drop any stale
+            # fallback entry so the two can't disagree later.
+            self.remove_colored_path(parent, name)
+            return True
+
+        if color is None:
+            self.remove_colored_path(parent, name)
+        else:
+            self.add_colored_path(parent, name, color)
+        return True
+
+    def _set_folder_color_metadata(self, directory: str, color: str | None) -> bool:
+        """The GVFS/Nemo-compatible half of set_folder_color. Returns
+        False (triggering the .dupotFileBrowser fallback above) if the
+        metadata mechanism isn't available, or `color` isn't one of
+        NEMO_FOLDER_COLOR_THEMES (Nemo has no icon asset for it)."""
+        gfile = Gio.File.new_for_path(directory)
+        try:
+            if color is None:
+                return gfile.set_attribute(
+                    _NEMO_CUSTOM_ICON_ATTRIBUTE,
+                    Gio.FileAttributeType.INVALID,
+                    0,
+                    Gio.FileQueryInfoFlags.NONE,
+                    None,
+                )
+            theme = NEMO_FOLDER_COLOR_THEMES.get(color.lower())
+            if theme is None:
+                return False
+            icon_uri = f"file:///usr/share/icons/{theme}/places/{_NEMO_ICON_SIZE}/folder.png"
+            return gfile.set_attribute_string(
+                _NEMO_CUSTOM_ICON_ATTRIBUTE, icon_uri, Gio.FileQueryInfoFlags.NONE, None
+            )
+        except GLib.Error:
+            return False
+
+    def get_folder_color(self, directory: str) -> str | None:
+        """The reverse of set_folder_color: tries the GVFS/Nemo metadata
+        first, then falls back to the .dupotFileBrowser sidecar in the
+        parent directory — whichever mechanism set_folder_color actually
+        used to store it."""
+        color = self._get_folder_color_metadata(directory)
+        if color is not None:
+            return color
+        parent = self.get_parent_dir(directory)
+        name = os.path.basename(directory.rstrip("/"))
+        return self.get_colored_path_map(parent).get(name)
+
+    def _get_folder_color_metadata(self, directory: str) -> str | None:
+        """None if `directory` has no custom-icon, the metadata
+        mechanism isn't available, or its custom-icon isn't one of ours
+        (e.g. a Mint-L/Mint-X variant, or some unrelated custom icon)."""
+        try:
+            info = Gio.File.new_for_path(directory).query_info(
+                _NEMO_CUSTOM_ICON_ATTRIBUTE, Gio.FileQueryInfoFlags.NONE, None
+            )
+        except GLib.Error:
+            return None
+        icon_uri = info.get_attribute_string(_NEMO_CUSTOM_ICON_ATTRIBUTE)
+        if not icon_uri:
+            return None
+        match = _NEMO_ICON_URI_RE.search(icon_uri)
+        if not match:
+            return None
+        return _NEMO_THEME_TO_COLOR.get(match.group(1))

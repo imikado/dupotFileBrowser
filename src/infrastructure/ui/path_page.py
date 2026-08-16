@@ -13,6 +13,7 @@ from infrastructure.api.user_settings_api import UserSettingsApi
 from infrastructure.ui.shared.color_picker_popup import show_color_picker_popup
 from infrastructure.ui.shared.confirm_dialog import show_confirm_dialog
 from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
+from infrastructure.ui.shared.file_icons import build_icon_image, build_folder_icon_image
 from infrastructure.ui.shared.open_with_popup import show_open_with_popup
 from infrastructure.ui.shared.rename_dialog import show_rename_dialog
 
@@ -21,8 +22,10 @@ _COLOR_DOT_SIZE = 10
 
 
 def _build_color_dot(color: str) -> Gtk.Widget:
-    """Small round swatch shown next to a row tagged via the "Add Color"
-    context menu entry (see PathPage._set_color)."""
+    """Small round swatch shown next to a *file* row tagged via the "Add
+    Color" context menu entry (see PathPage._set_color). Folders instead
+    get their icon itself tinted — see build_folder_icon_image — matching
+    how Nemo's "Folder Color" shows up."""
     dot = Gtk.Box()
     dot.set_size_request(_COLOR_DOT_SIZE, _COLOR_DOT_SIZE)
     dot.set_valign(Gtk.Align.CENTER)
@@ -88,13 +91,19 @@ class _Column(Gtk.Frame):
             row = Adw.ActionRow()
             row.set_title(GLib.markup_escape_text(entry.get_display_name()))
             row.set_title_lines(1)
+            # Titles are truncated to one line (COLUMN_WIDTH is narrow) —
+            # the tooltip is the only way to read a long name in full.
+            row.set_tooltip_text(entry.get_display_name())
             row.set_activatable(True)
-            row.add_prefix(Gtk.Image.new_from_icon_name(entry.get_icon_name()))
             color = color_map.get(entry.name)
-            if color:
-                row.add_suffix(_build_color_dot(color))
             if entry.is_dir:
-                row.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
+                row.add_prefix(build_folder_icon_image(color))
+            else:
+                row.add_prefix(build_icon_image(entry.get_icon_key()))
+                if color:
+                    row.add_suffix(_build_color_dot(color))
+            if entry.is_dir:
+                row.add_suffix(build_icon_image("go-next"))
             row.entry = entry
 
             # Files only open on a double click (see PathPage._open_entry);
@@ -169,6 +178,18 @@ class PathPage(Gtk.Box):
         self._scroll.set_child(self._columns_box)
 
         self.append(self._scroll)
+
+        # File-type icons are baked light/dark PNGs (see file_icons.py),
+        # not auto-recoloring symbolic icons — rows built under the old
+        # style need rebuilding when it flips, whether from the in-app
+        # toggle or the desktop's own scheme changing underneath it.
+        Adw.StyleManager.get_default().connect(
+            "notify::dark", self._on_style_dark_changed
+        )
+
+    def _on_style_dark_changed(self, _style_manager, _pspec):
+        for column in self._columns:
+            self._set_column_entries(column, column.path)
 
     def load_path(self, path: str):
         """Reset the whole view to a single column showing `path`."""
@@ -253,10 +274,18 @@ class PathPage(Gtk.Box):
         self._columns_box.append(column)
 
     def _set_column_entries(self, column: _Column, path: str):
-        column.set_entries(
-            self._list_directory_uc.get_entry_list(path),
-            self._system_api.get_colored_path_map(path),
-        )
+        entry_list = self._list_directory_uc.get_entry_list(path)
+        # Files: one batched read of the parent's .dupotFileBrowser
+        # sidecar. Folders: each one owns its color on itself (Nemo
+        # convention — see SystemApi.get_folder_color), so it's one query
+        # per subfolder, same as Nemo/Nautilus themselves do.
+        color_map = self._system_api.get_colored_path_map(path)
+        for entry in entry_list:
+            if entry.is_dir:
+                folder_color = self._system_api.get_folder_color(entry.path)
+                if folder_color:
+                    color_map[entry.name] = folder_color
+        column.set_entries(entry_list, color_map)
 
     def _on_row_activated(self, column: _Column, row):
         """Fires on every single click (GtkListBox's own activation).
@@ -375,11 +404,17 @@ class PathPage(Gtk.Box):
 
     def _set_color(self, entry, color: str | None):
         """Tags `entry` with `color`, or untags it if color is None (the
-        "Remove Color" entry) — stored in a .dupotFileBrowser sidecar
-        JSON file in its parent directory (see SystemApi.add_colored_path
-        /remove_colored_path)."""
+        "Remove Color" entry).
+
+        Folders go through SystemApi.set_folder_color — the same GVFS
+        "metadata::custom-icon" attribute Nemo's "Folder Color" writes,
+        so it's read back identically by Nemo (and vice versa). Files
+        have no Nemo equivalent, so they keep the .dupotFileBrowser
+        sidecar (add_colored_path/remove_colored_path)."""
         parent = self._system_api.get_parent_dir(entry.path)
-        if color is None:
+        if entry.is_dir:
+            self._system_api.set_folder_color(entry.path, color)
+        elif color is None:
             self._system_api.remove_colored_path(parent, entry.name)
         else:
             self._system_api.add_colored_path(parent, entry.name, color)

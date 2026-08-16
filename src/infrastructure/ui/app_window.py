@@ -14,6 +14,7 @@ from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
 from infrastructure.ui.menu.parameters_dialog import ParametersDialog
 from infrastructure.ui.path_page import PathPage
+from infrastructure.ui.shared.file_icons import build_icon_image
 from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShared
 from infrastructure.ui.trash_page import TrashPage
 
@@ -41,7 +42,7 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar_view.add_top_bar(header_bar)
 
         self._up_button = Gtk.Button()
-        self._up_button.set_icon_name("go-up-symbolic")
+        self._up_button.set_child(build_icon_image("go-up"))
         self._up_button.set_tooltip_text(_("Parent folder"))
         self._up_button.connect("clicked", self._on_up_clicked)
         header_bar.pack_start(self._up_button)
@@ -72,17 +73,17 @@ class MainWindow(Adw.ApplicationWindow):
         header_bar.pack_end(self._paste_slot)
         self._paste_badge_css = self._build_paste_badge_css_provider()
 
-        self._dark_mode_button = Gtk.Button()
-        self._dark_mode_button.connect("clicked", self._on_toggle_dark_mode)
-        header_bar.pack_end(self._dark_mode_button)
+        #self._dark_mode_button = Gtk.Button()
+        #self._dark_mode_button.connect("clicked", self._on_toggle_dark_mode)
+        #header_bar.pack_end(self._dark_mode_button)
 
         menu = Gio.Menu()
         menu.append(_("Parameters"), "win.parameters")
         menu.append(_("About"), "win.about")
-        menu_button = Gtk.MenuButton()
-        menu_button.set_icon_name("open-menu-symbolic")
-        menu_button.set_menu_model(menu)
-        header_bar.pack_end(menu_button)
+        self._menu_button = Gtk.MenuButton()
+        self._menu_button.set_child(build_icon_image("open-menu"))
+        self._menu_button.set_menu_model(menu)
+        header_bar.pack_end(self._menu_button)
 
         for name, callback in [
             ("parameters", self._on_menu_parameters),
@@ -131,17 +132,37 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar_view.set_content(body)
         self.set_content(toolbar_view)
 
+        # Header/sidebar/trash icons are baked light/dark PNGs (see
+        # file_icons.py), not auto-recoloring symbolic icons — every place
+        # one was built has to be rebuilt when the style flips, whether
+        # from _apply_theme() below (the very first application, before
+        # any of them have seen the *real* starting scheme) or later, from
+        # the in-app toggle or the desktop's own scheme changing
+        # underneath it. PathPage/TrashPage handle their own rows; this
+        # covers what MainWindow builds directly.
+        Adw.StyleManager.get_default().connect(
+            "notify::dark", self._on_style_dark_changed
+        )
+
         self._apply_theme()
-        self._update_dark_mode_icon()
+        #self._update_dark_mode_icon()
         self._go_to_path(self._current_path)
+
+    def _on_style_dark_changed(self, _style_manager, _pspec):
+        self._up_button.set_child(build_icon_image("go-up"))
+        self._menu_button.set_child(build_icon_image("open-menu"))
+        #self._update_dark_mode_icon()
+        self._update_paste_button()
+        self._refresh_side_menu()
+        self._trash_page.refresh()
 
     def _refresh_side_menu(self):
         items = [
             SideMenuItem(
-                "user-home-symbolic", _("Home"), self._home_path, self._go_to_path
+                "user-home", _("Home"), self._home_path, self._go_to_path
             ),
             SideMenuItem(
-                "user-trash-symbolic", _("Trash"), self._trash_path, self._go_to_trash
+                "user-trash", _("Trash"), self._trash_path, self._go_to_trash
             ),
         ]
         if self._settings.favorite_list:
@@ -149,7 +170,7 @@ class MainWindow(Adw.ApplicationWindow):
             for favorite in self._settings.favorite_list:
                 items.append(
                     SideMenuItem(
-                        "folder-symbolic",
+                        "folder",
                         favorite.get(UserSettingsEntity.FIELD_FAVORITE_LABEL, ""),
                         favorite.get(UserSettingsEntity.FIELD_FAVORITE_PATH, ""),
                         self._go_to_path,
@@ -232,7 +253,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         overlay = Gtk.Overlay()
-        overlay.set_child(Gtk.Image.new_from_icon_name("edit-paste-symbolic"))
+        overlay.set_child(build_icon_image("edit-paste"))
         overlay.add_overlay(badge)
 
         button = Gtk.Button()
@@ -425,7 +446,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._settings.theme = UserSettingsEntity.THEME_DARK
         UserSettingsApi(self._system_api).save()
         self._apply_theme()
-        self._update_dark_mode_icon()
+        #self._update_dark_mode_icon()
 
     def _apply_theme(self):
         style_manager = Adw.StyleManager.get_default()
@@ -436,14 +457,14 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             style_manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
 
-    def _update_dark_mode_icon(self):
-        is_dark = Adw.StyleManager.get_default().get_dark()
-        self._dark_mode_button.set_icon_name(
-            "weather-clear-symbolic" if is_dark else "weather-clear-night-symbolic"
-        )
-        self._dark_mode_button.set_tooltip_text(
-            _("Switch to light mode") if is_dark else _("Switch to dark mode")
-        )
+    #def _update_dark_mode_icon(self):
+    #    is_dark = Adw.StyleManager.get_default().get_dark()
+    #    self._dark_mode_button.set_child(
+    #        build_icon_image("weather-clear" if is_dark else "weather-clear-night")
+    #    )
+    #    self._dark_mode_button.set_tooltip_text(
+    #        _("Switch to light mode") if is_dark else _("Switch to dark mode")
+    #    )
 
     def _on_menu_parameters(self, _action, _param):
         ParametersDialog(self._on_settings_saved).present(self)

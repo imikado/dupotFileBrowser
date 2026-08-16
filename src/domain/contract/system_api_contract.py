@@ -93,3 +93,11 @@ class SystemApiContract(ABC):
     @abstractmethod
     def get_colored_path_map(self, directory: str) -> dict:
         pass
+
+    @abstractmethod
+    def set_folder_color(self, directory: str, color: str | None) -> bool:
+        pass
+
+    @abstractmethod
+    def get_folder_color(self, directory: str) -> str | None:
+        pass

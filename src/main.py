@@ -1,8 +1,33 @@
 #!/usr/bin/env python3
 
 import gettext
+import glob
 import os
 import sys
+
+
+def _ensure_gvfs_metadata_discoverable():
+    """Some environments (seen in at least one dev shell) don't export
+    GIO_EXTRA_MODULES, so GIO's local libgio never finds the host's
+    libgvfsdbus.so and silently behaves as if gvfsd-metadata doesn't
+    exist — reads/writes of "metadata::*" attributes (SystemApi's
+    set_folder_color/get_folder_color, for Nemo-compatible folder
+    colors) then always miss, even though the daemon and its data are
+    right there. Must run before the first "from gi.repository import
+    Gio" anywhere (module scanning is lazy but only happens once)."""
+    if os.environ.get("GIO_EXTRA_MODULES"):
+        return  # already configured by the desktop session — don't override
+    candidates = sorted(glob.glob("/usr/lib/*/gio/modules")) + [
+        "/usr/lib64/gio/modules",
+        "/usr/lib/gio/modules",
+    ]
+    for candidate in candidates:
+        if glob.glob(os.path.join(candidate, "*gvfsdbus*")):
+            os.environ["GIO_EXTRA_MODULES"] = candidate
+            return
+
+
+_ensure_gvfs_metadata_discoverable()
 
 from gi.repository import GLib
 

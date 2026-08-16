@@ -28,6 +28,12 @@ class PathConf:
     def get_asset_logo_path(self) -> str:
         return self.get_path_list_join([self.get_asset_path(), "logos", "512x512.png"])
 
+    def get_asset_file_icon_path(self, icon_key: str, dark: bool) -> str:
+        variant = "dark" if dark else "light"
+        return self.get_path_list_join(
+            [self.get_asset_path(), "icons", variant, f"{icon_key}.png"]
+        )
+
     # user
     def set_data_path(self, data_path: str):
         self._data_path = data_path

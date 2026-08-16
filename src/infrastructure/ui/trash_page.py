@@ -8,6 +8,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk
 
 from infrastructure.ui.shared.confirm_dialog import show_confirm_dialog
+from infrastructure.ui.shared.file_icons import build_icon_image
 
 
 class TrashPage(Gtk.Box):
@@ -89,9 +90,10 @@ class TrashPage(Gtk.Box):
             if subtitle_parts:
                 row.set_subtitle(GLib.markup_escape_text(" — ".join(subtitle_parts)))
                 row.set_subtitle_lines(1)
-            row.add_prefix(Gtk.Image.new_from_icon_name(entry.get_icon_name()))
+            row.add_prefix(build_icon_image(entry.get_icon_key()))
 
-            restore_button = Gtk.Button(icon_name="edit-undo-symbolic")
+            restore_button = Gtk.Button()
+            restore_button.set_child(build_icon_image("edit-undo"))
             restore_button.set_tooltip_text(_("Restore"))
             restore_button.add_css_class("flat")
             restore_button.set_valign(Gtk.Align.CENTER)
@@ -100,7 +102,8 @@ class TrashPage(Gtk.Box):
             )
             row.add_suffix(restore_button)
 
-            delete_button = Gtk.Button(icon_name="user-trash-symbolic")
+            delete_button = Gtk.Button()
+            delete_button.set_child(build_icon_image("user-trash"))
             delete_button.set_tooltip_text(_("Delete Permanently"))
             delete_button.add_css_class("flat")
             delete_button.set_valign(Gtk.Align.CENTER)

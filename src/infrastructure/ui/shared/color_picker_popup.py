@@ -9,21 +9,28 @@ from infrastructure.ui.shared.popup_shared import popup_deferred
 SWATCH_SIZE = 28
 _COLUMNS = 4
 
-# (label, hex) — GNOME's standard tag-color palette (same set Nautilus's
-# "Mark as favorite"/color-tag picker uses). Labels stay untranslated
-# here and only go through _() at call time in show_color_picker_popup:
-# this list is built at *module import* time, which happens before
-# main() installs gettext's _() as a builtin — translating eagerly here
-# would raise NameError on startup.
+# (label, hex) — Nemo's own "Folder Color" palette (Cinnamon's Mint-Y
+# icon theme variants; see SystemApi.NEMO_FOLDER_COLOR_THEMES), so a
+# color picked here matches exactly what Nemo would use — same hex, same
+# name — keeping folders colored from here compatible with Nemo. Labels
+# stay untranslated here and only go through _() at call time in
+# show_color_picker_popup: this list is built at *module import* time,
+# which happens before main() installs gettext's _() as a builtin —
+# translating eagerly here would raise NameError on startup.
 _PALETTE = [
-    ("Red", "#e01b24"),
-    ("Orange", "#ff7800"),
-    ("Yellow", "#f6d32d"),
-    ("Green", "#2ec27e"),
-    ("Blue", "#3584e4"),
-    ("Purple", "#9141ac"),
-    ("Brown", "#986a44"),
-    ("Gray", "#77767b"),
+    ("Blue", "#5294e2"),
+    ("Navy", "#004988"),
+    ("Aqua", "#57b8ec"),
+    ("Teal", "#45abb7"),
+    ("Cyan", "#00bcd4"),
+    ("Green", "#50c16f"),
+    ("Sand", "#f9c470"),
+    ("Grey", "#aaaaaa"),
+    ("Orange", "#ff804f"),
+    ("Yaru", "#ff7446"),
+    ("Red", "#f54f54"),
+    ("Pink", "#f26a9a"),
+    ("Purple", "#a27ae4"),
 ]
 
 
