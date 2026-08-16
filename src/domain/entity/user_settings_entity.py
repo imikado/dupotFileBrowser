@@ -23,16 +23,23 @@ class UserSettingsEntity:
     FIELD_FAVORITE_LIST = "favoriteList"
     FIELD_FAVORITE_LABEL = "label"
     FIELD_FAVORITE_PATH = "path"
+    FIELD_WINDOW_WIDTH = "windowWidth"
+    FIELD_WINDOW_HEIGHT = "windowHeight"
 
     _instance: "UserSettingsEntity | None" = None
 
     DEFAULT_VERSION = 1
     DEFAULT_THEME = THEME_SYSTEM
     DEFAULT_LANGUAGE = LANGUAGE_SYSTEM
+    # Matches MainWindow's previous hardcoded set_default_size(1000, 700).
+    DEFAULT_WINDOW_WIDTH = 1000
+    DEFAULT_WINDOW_HEIGHT = 700
 
     version: int = DEFAULT_VERSION
     theme: str = DEFAULT_THEME
     language: str = DEFAULT_LANGUAGE
+    window_width: int = DEFAULT_WINDOW_WIDTH
+    window_height: int = DEFAULT_WINDOW_HEIGHT
     # Each item is {"label": <dir name>, "path": <absolute path>}.
     favorite_list: list[dict]
 
@@ -55,12 +62,16 @@ class UserSettingsEntity:
         self.version = self.DEFAULT_VERSION
         self.theme = self.DEFAULT_THEME
         self.language = self.DEFAULT_LANGUAGE
+        self.window_width = self.DEFAULT_WINDOW_WIDTH
+        self.window_height = self.DEFAULT_WINDOW_HEIGHT
         self.favorite_list = []
 
     def load(self, raw_obj: object) -> None:
         self.version = raw_obj.get(self.FIELD_VERSION, self.DEFAULT_VERSION)
         self.theme = raw_obj.get(self.FIELD_THEME, self.DEFAULT_THEME)
         self.language = raw_obj.get(self.FIELD_LANGUAGE, self.DEFAULT_LANGUAGE)
+        self.window_width = raw_obj.get(self.FIELD_WINDOW_WIDTH, self.DEFAULT_WINDOW_WIDTH)
+        self.window_height = raw_obj.get(self.FIELD_WINDOW_HEIGHT, self.DEFAULT_WINDOW_HEIGHT)
         self.favorite_list = raw_obj.get(self.FIELD_FAVORITE_LIST, [])
 
     def get_json_string(self) -> str:
@@ -69,9 +80,15 @@ class UserSettingsEntity:
                 self.FIELD_VERSION: self.version,
                 self.FIELD_THEME: self.theme,
                 self.FIELD_LANGUAGE: self.language,
+                self.FIELD_WINDOW_WIDTH: self.window_width,
+                self.FIELD_WINDOW_HEIGHT: self.window_height,
                 self.FIELD_FAVORITE_LIST: self.favorite_list,
             }
         )
+
+    def set_window_size(self, width: int, height: int) -> None:
+        self.window_width = width
+        self.window_height = height
 
     def add_favorite(self, label: str, path: str) -> None:
         """Adds {label, path} to favorite_list, unless that path is

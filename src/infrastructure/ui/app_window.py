@@ -28,10 +28,19 @@ class MainWindow(Adw.ApplicationWindow):
         super().__init__(*args, **kwargs)
 
         self.set_title(_("File browser"))
-        self.set_default_size(1000, 700)
 
         self._system_api = SystemApi()
         self._settings = UserSettingsEntity()
+        self.set_default_size(self._settings.window_width, self._settings.window_height)
+        # Debounce id for _on_window_size_changed — GTK fires
+        # notify::default-width/height continuously while the user drags
+        # an edge, so saving on every one of those would hammer disk I/O;
+        # this coalesces a burst of resize events into one write, a
+        # moment after the user stops moving the pointer.
+        self._save_window_size_source_id: int | None = None
+        self.connect("notify::default-width", self._on_window_size_changed)
+        self.connect("notify::default-height", self._on_window_size_changed)
+        self.connect("close-request", self._on_close_request)
         self._home_path = self._system_api.get_home_dir()
         self._trash_path = self._system_api.get_trash_dir()
         self._current_path = self._home_path
@@ -147,6 +156,29 @@ class MainWindow(Adw.ApplicationWindow):
         self._apply_theme()
         #self._update_dark_mode_icon()
         self._go_to_path(self._current_path)
+
+    def _on_window_size_changed(self, _window, _pspec):
+        if self._save_window_size_source_id is not None:
+            GLib.source_remove(self._save_window_size_source_id)
+        self._save_window_size_source_id = GLib.timeout_add(
+            500, self._save_window_size
+        )
+
+    def _save_window_size(self) -> bool:
+        self._save_window_size_source_id = None
+        width, height = self.get_default_size()
+        self._settings.set_window_size(width, height)
+        UserSettingsApi(self._system_api).save()
+        return GLib.SOURCE_REMOVE
+
+    def _on_close_request(self, _window) -> bool:
+        # Catches a resize immediately followed by closing the window —
+        # otherwise that last size could still be sitting in the debounce
+        # above, never written to disk.
+        if self._save_window_size_source_id is not None:
+            GLib.source_remove(self._save_window_size_source_id)
+            self._save_window_size()
+        return False  # don't block the close
 
     def _on_style_dark_changed(self, _style_manager, _pspec):
         self._up_button.set_child(build_icon_image("go-up"))
