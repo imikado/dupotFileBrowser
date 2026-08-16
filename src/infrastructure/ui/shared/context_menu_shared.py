@@ -81,8 +81,35 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
             # be in flight past that one tick — the new popup would then
             # open while the old grab hadn't been released yet and end up
             # not showing at all (see popup_deferred, same root cause).
-            popover.connect("closed", lambda _p: item.on_click())
+            #
+            # But "closed" isn't guaranteed either: a click can land on a
+            # row's button while the popover is still mid-way through its
+            # own *opening* transition (show_context_menu's popup_deferred
+            # only just showed it — right-click-then-immediately-click is
+            # the normal, fast way to use a context menu). Interrupting
+            # that in-flight open with popdown() can leave GTK without a
+            # clean "closed" emission, so the handler above would then
+            # wait forever and the click would silently do nothing — the
+            # menu visibly closes but the action never runs. The guarded
+            # fallback below runs the action on a short timeout regardless,
+            # so a missing "closed" signal degrades to a barely-noticeable
+            # delay instead of a dropped action; whichever fires first wins
+            # and the other becomes a no-op.
+            ran = False
+
+            def _run_once():
+                nonlocal ran
+                if not ran:
+                    ran = True
+                    item.on_click()
+
+            def _on_timeout():
+                _run_once()
+                return False
+
+            popover.connect("closed", lambda _p: _run_once())
             popover.popdown()
+            GLib.timeout_add(200, _on_timeout)
 
         btn.connect("clicked", _on_click)
         return btn

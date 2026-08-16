@@ -53,7 +53,7 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release date="2026-08-16" version="1.0.3">
+    <release date="2026-08-16" version="1.0.4">
       <description>
         <ul>
           <li>Rewrite from Flutter to Python GTK4/libadwaita</li>
