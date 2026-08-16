@@ -20,6 +20,17 @@ from infrastructure.ui.shared.rename_dialog import show_rename_dialog
 COLUMN_WIDTH = 260
 _COLOR_DOT_SIZE = 10
 
+# Right-clicking the row that *just* opened a new column (single-click
+# navigation) can catch that column's own layout/render work still in
+# flight — the context menu popover then has to compete for the same
+# render pipeline to become interactive, and can show too late to catch
+# the very next click (measured: reliable past ~150ms of real settle
+# time, well under half of that and it's a coin flip). Rather than delay
+# every right-click by that much, only the ones landing on a
+# just-activated row within this window get it — see _on_row_right_click.
+_RECENT_ACTIVATION_WINDOW_US = 300_000
+_CONTEXT_MENU_SETTLE_DELAY_MS = 150
+
 
 def _build_color_dot(color: str) -> Gtk.Widget:
     """Small round swatch shown next to a *file* row tagged via the "Add
@@ -52,14 +63,18 @@ class _Column(Gtk.Frame):
         self.set_size_request(COLUMN_WIDTH, -1)
         self.set_vexpand(True)
 
+        # (row, GLib.get_monotonic_time()) of the last single-click
+        # navigation — see _on_row_right_click.
+        self._last_activated_row = None
+        self._last_activated_at = 0
+
         self._list_box = Gtk.ListBox()
         self._list_box.add_css_class("navigation-sidebar")
         self._list_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self._list_box.set_margin_top(6)
         self._list_box.set_margin_bottom(6)
-        self._list_box.connect(
-            "row-activated", lambda _box, row: on_row_activated(self, row)
-        )
+        self._list_box.connect("row-activated", self._on_list_box_row_activated)
+        self._on_row_activated = on_row_activated
 
         scroll = Gtk.ScrolledWindow()
         scroll.set_vexpand(True)
@@ -120,13 +135,31 @@ class _Column(Gtk.Frame):
 
         self._stack.set_visible_child_name("list" if entry_list else "empty")
 
+    def _on_list_box_row_activated(self, _box, row):
+        self._last_activated_row = row
+        self._last_activated_at = GLib.get_monotonic_time()
+        self._on_row_activated(self, row)
+
     def _on_row_left_click(self, _gesture, n_press, _x, _y, row):
         if n_press == 2:
             self._on_row_double_clicked(self, row)
 
     def _on_row_right_click(self, gesture, _n_press, x, y, row):
         gesture.set_state(Gtk.EventSequenceState.CLAIMED)
-        self._on_row_context_menu(self, row, x, y)
+        just_activated = (
+            row is self._last_activated_row
+            and GLib.get_monotonic_time() - self._last_activated_at
+            < _RECENT_ACTIVATION_WINDOW_US
+        )
+        if just_activated:
+            # This row's own single-click navigation (opening a new
+            # column) may still be settling — see the constants above.
+            GLib.timeout_add(
+                _CONTEXT_MENU_SETTLE_DELAY_MS,
+                lambda: self._on_row_context_menu(self, row, x, y) or False,
+            )
+        else:
+            self._on_row_context_menu(self, row, x, y)
 
     def select_path(self, path: str):
         row = self._list_box.get_first_child()

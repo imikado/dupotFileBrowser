@@ -71,7 +71,7 @@ def show_color_picker_popup(parent_widget, on_color_selected):
     # See popup_deferred: this popover is opened from inside the
     # right-click menu's own "Add Color" item activation, so it must not
     # popup() synchronously either.
-    GLib.idle_add(popup_deferred, popover)
+    GLib.idle_add(popup_deferred, popover, priority=GLib.PRIORITY_HIGH_IDLE)
 
 
 def _build_swatch(label: str, hex_color: str) -> Gtk.Button:

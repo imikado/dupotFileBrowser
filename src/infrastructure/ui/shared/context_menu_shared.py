@@ -90,5 +90,5 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
     for item in item_list:
         box.append(make_button(item))
 
-    GLib.idle_add(popup_deferred, popover)
+    GLib.idle_add(popup_deferred, popover, priority=GLib.PRIORITY_HIGH_IDLE)
     return popover

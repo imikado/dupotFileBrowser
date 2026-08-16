@@ -70,7 +70,7 @@ def show_open_with_popup(row, path: str, system_api):
     # See popup_deferred: this popover is opened from inside the
     # right-click menu's own "Open With…" item activation, so it must not
     # popup() synchronously either.
-    GLib.idle_add(popup_deferred, popover)
+    GLib.idle_add(popup_deferred, popover, priority=GLib.PRIORITY_HIGH_IDLE)
 
 
 def _show_open_with_dialog(row, path: str, content_type: str):
