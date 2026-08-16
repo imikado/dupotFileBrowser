@@ -72,6 +72,17 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
         btn.set_hexpand(True)
 
         def _on_click(_b):
+            # Don't popdown()/unparent() synchronously from inside this
+            # very button's own "clicked" handler: GTK is still mid-way
+            # through its press/release bookkeeping for this button, and
+            # ripping the popover (hence the button) out of the widget
+            # tree right now corrupts that bookkeeping — surfaces as
+            # "Gtk-WARNING: Broken accounting of active state for widget"
+            # (seen in the Flatpak build). Deferring one tick lets the
+            # click event finish unwinding before we touch the tree.
+            GLib.idle_add(_start_close)
+
+        def _start_close():
             # Wait for the popover to actually finish closing — its real
             # "closed" signal, not just calling popdown() — before running
             # the action. on_click often opens its own follow-up popup
@@ -110,6 +121,7 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
             popover.connect("closed", lambda _p: _run_once())
             popover.popdown()
             GLib.timeout_add(200, _on_timeout)
+            return False
 
         btn.connect("clicked", _on_click)
         return btn
