@@ -20,6 +20,9 @@ class UserSettingsEntity:
     FIELD_VERSION = "version"
     FIELD_THEME = "theme"
     FIELD_LANGUAGE = "language"
+    FIELD_FAVORITE_LIST = "favoriteList"
+    FIELD_FAVORITE_LABEL = "label"
+    FIELD_FAVORITE_PATH = "path"
 
     _instance: "UserSettingsEntity | None" = None
 
@@ -30,6 +33,8 @@ class UserSettingsEntity:
     version: int = DEFAULT_VERSION
     theme: str = DEFAULT_THEME
     language: str = DEFAULT_LANGUAGE
+    # Each item is {"label": <dir name>, "path": <absolute path>}.
+    favorite_list: list[dict]
 
     # Resolved by the app at startup from the real system locale (see
     # main.py, which uses GLib.get_language_names() — the reliable locale
@@ -39,18 +44,24 @@ class UserSettingsEntity:
 
     def __new__(cls, *_args, **_kwargs):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            instance = super().__new__(cls)
+            # Own mutable list per (singleton) instance, never a shared
+            # class attribute — see reset_to_defaults/load.
+            instance.favorite_list = []
+            cls._instance = instance
         return cls._instance
 
     def reset_to_defaults(self) -> None:
         self.version = self.DEFAULT_VERSION
         self.theme = self.DEFAULT_THEME
         self.language = self.DEFAULT_LANGUAGE
+        self.favorite_list = []
 
     def load(self, raw_obj: object) -> None:
         self.version = raw_obj.get(self.FIELD_VERSION, self.DEFAULT_VERSION)
         self.theme = raw_obj.get(self.FIELD_THEME, self.DEFAULT_THEME)
         self.language = raw_obj.get(self.FIELD_LANGUAGE, self.DEFAULT_LANGUAGE)
+        self.favorite_list = raw_obj.get(self.FIELD_FAVORITE_LIST, [])
 
     def get_json_string(self) -> str:
         return json.dumps(
@@ -58,8 +69,26 @@ class UserSettingsEntity:
                 self.FIELD_VERSION: self.version,
                 self.FIELD_THEME: self.theme,
                 self.FIELD_LANGUAGE: self.language,
+                self.FIELD_FAVORITE_LIST: self.favorite_list,
             }
         )
+
+    def add_favorite(self, label: str, path: str) -> None:
+        """Adds {label, path} to favorite_list, unless that path is
+        already favorited."""
+        already_favorite = any(
+            fav.get(self.FIELD_FAVORITE_PATH) == path for fav in self.favorite_list
+        )
+        if already_favorite:
+            return
+        self.favorite_list.append(
+            {self.FIELD_FAVORITE_LABEL: label, self.FIELD_FAVORITE_PATH: path}
+        )
+
+    def remove_favorite(self, path: str) -> None:
+        self.favorite_list = [
+            fav for fav in self.favorite_list if fav.get(self.FIELD_FAVORITE_PATH) != path
+        ]
 
     def use_theme_system(self) -> bool:
         return self.theme == self.THEME_SYSTEM

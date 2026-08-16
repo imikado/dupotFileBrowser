@@ -12,6 +12,9 @@ finish-args:
   # portal in infrastructure/api/system_api.py, not a raw exec).
   - --talk-name=org.freedesktop.portal.Desktop
   - --talk-name=org.freedesktop.portal.OpenURI
+  # flatpak-spawn --host, used by SystemApi._cmd to run "cp" on the host
+  # for paste jobs (see infrastructure/ui/app_window.py's paste queue).
+  - --talk-name=org.freedesktop.Flatpak
   - --socket=wayland
   - --socket=fallback-x11
   - --share=ipc

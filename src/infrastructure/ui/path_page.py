@@ -1,3 +1,6 @@
+import os
+import subprocess
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -7,8 +10,10 @@ gi.require_version("Gio", "2.0")
 
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
+from domain.entity.user_settings_entity import UserSettingsEntity
 from domain.UseCase.list_directory_uc import ListDirectoryUc
 from infrastructure.api.system_api import SystemApi
+from infrastructure.api.user_settings_api import UserSettingsApi
 
 COLUMN_WIDTH = 260
 
@@ -109,9 +114,21 @@ class PathPage(Gtk.Box):
     view instead scrolls horizontally, and going "up" past the leftmost
     column prepends its parent rather than discarding anything."""
 
-    def __init__(self, on_path_changed):
+    def __init__(
+        self,
+        on_path_changed,
+        on_favorites_changed=lambda: None,
+        on_file_copied=lambda name, path: None,
+        on_file_cut=lambda name, path: None,
+    ):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL)
         self._on_path_changed = on_path_changed
+        self._on_favorites_changed = on_favorites_changed
+        self._on_file_copied = on_file_copied
+        self._on_file_cut = on_file_cut
+        # Absolute path of the last file/folder sent to the clipboard via
+        # the "Copy" context menu entry (not "Cut" — see _copy_to_clipboard).
+        self._last_copied_path: str | None = None
         self._system_api = SystemApi()
         self._list_directory_uc = ListDirectoryUc(self._system_api)
         self._columns: list[_Column] = []
@@ -133,6 +150,14 @@ class PathPage(Gtk.Box):
         """Reset the whole view to a single column showing `path`."""
         self._reset_columns()
         self._push_column(path)
+
+    def refresh_path(self, path: str):
+        """Reloads the entries of any open column showing `path` in place
+        (columns/selection untouched) — used after a background paste job
+        writes a new file into it."""
+        for column in self._columns:
+            if column.path == path:
+                column.set_entries(self._list_directory_uc.get_entry_list(path))
 
     def load_path_chain(self, path: str):
         """Reset the whole view, rebuilding one column per path segment
@@ -292,15 +317,33 @@ class PathPage(Gtk.Box):
                 )
             )
 
+        # Bouton "Add to favorites" (uniquement pour les répertoires)
+        if entry.is_dir:
+            box.append(
+                make_button(
+                    _("Add to favorites"),
+                    lambda: self._add_to_favorites(entry.name, entry.path),
+                )
+            )
+
         # Boutons "Copy" et "Cut"
         box.append(
             make_button(
-                _("Copy"), lambda: self._copy_to_clipboard(entry.path, cut=False)
+                _("Copy"),
+                lambda: self._copy_to_clipboard(entry.path, cut=False, name=entry.name),
             )
         )
         box.append(
             make_button(
-                _("Cut"), lambda: self._copy_to_clipboard(entry.path, cut=True)
+                _("Cut"),
+                lambda: self._copy_to_clipboard(entry.path, cut=True, name=entry.name),
+            )
+        )
+
+        # Bouton "Rename"
+        box.append(
+            make_button(
+                _("Rename"), lambda: self._show_rename_dialog(column, entry, row)
             )
         )
 
@@ -316,7 +359,7 @@ class PathPage(Gtk.Box):
         popover.popup()
         return False
 
-    def _copy_to_clipboard(self, path: str, cut: bool):
+    def _copy_to_clipboard(self, path: str, cut: bool, name: str | None = None):
         """Puts the file/folder on the system clipboard the same way
         Nautilus/Files do, so Cut/Copy here interoperate with Paste in any
         other GTK file manager."""
@@ -334,6 +377,88 @@ class PathPage(Gtk.Box):
             ]
         )
         self.get_clipboard().set_content(provider)
+
+        if cut:
+            self._on_file_cut(name or path, path)
+        else:
+            self._last_copied_path = path
+            self._on_file_copied(name or path, path)
+
+    def _show_rename_dialog(
+        self, column: _Column, entry, row, initial_name: str | None = None
+    ):
+        name_entry = Gtk.Entry()
+        name_entry.set_text(initial_name or entry.name)
+        name_entry.set_activates_default(True)
+
+        dialog = Adw.AlertDialog(
+            heading=_("Rename"),
+            body=_('Choose a new name for "{name}".').format(name=entry.name),
+        )
+        dialog.set_extra_child(name_entry)
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("rename", _("Rename"))
+        dialog.set_default_response("rename")
+        dialog.set_close_response("cancel")
+        dialog.set_response_appearance("rename", Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(_dialog, response):
+            if response != "rename":
+                return
+            new_name = name_entry.get_text().strip()
+            if not new_name or new_name == entry.name:
+                return
+            parent = self._system_api.get_parent_dir(entry.path)
+            destination = os.path.join(parent, new_name)
+            if self._system_api.file_exists(destination):
+                # Still taken: ask again, keeping the attempted name so
+                # the user can tweak it instead of retyping from scratch.
+                GLib.idle_add(self._show_rename_dialog, column, entry, row, new_name)
+                return
+            self._perform_rename(column, entry, destination)
+
+        dialog.connect("response", on_response)
+        dialog.present(row.get_root())
+
+    def _perform_rename(self, column: _Column, entry, destination: str):
+        # get_move_call() goes through flatpak-spawn --host when
+        # sandboxed, same as the Cut/Paste "move" job (see SystemApi._cmd).
+        # A rename is a same-directory move, so it runs synchronously —
+        # it's a plain filesystem rename, not a data copy.
+        result = subprocess.run(
+            self._system_api.get_move_call(entry.path, destination),
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            self._show_rename_error(entry.name, result.stdout + result.stderr, column.get_root())
+            return
+
+        # The renamed entry's own path is now stale for any column already
+        # open on it — drop those, same as _open_entry does when a row's
+        # underlying folder changes.
+        index = self._columns.index(column)
+        for stale in self._columns[index + 1 :]:
+            self._columns_box.remove(stale)
+        self._columns = self._columns[: index + 1]
+
+        self.refresh_path(column.path)
+        column.select_path(destination)
+
+    def _show_rename_error(self, name: str, output: str, root):
+        body = _('Could not rename "{name}".').format(name=name)
+        if output.strip():
+            body += "\n\n" + output.strip()
+        dialog = Adw.AlertDialog(heading=_("Rename failed"), body=body)
+        dialog.add_response("ok", _("OK"))
+        dialog.present(root)
+
+    def _add_to_favorites(self, label: str, path: str):
+        """Adds {label, path} to UserSettingsEntity.favorite_list and
+        persists it, so it survives an app restart."""
+        UserSettingsEntity().add_favorite(label, path)
+        UserSettingsApi(self._system_api).save()
+        self._on_favorites_changed()
 
     def _open_with(self, path: str, row):
         """Popover with a dropdown of every application registered for

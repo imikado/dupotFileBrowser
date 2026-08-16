@@ -1,9 +1,13 @@
+import os
+import subprocess
+import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from domain.entity.user_settings_entity import UserSettingsEntity
 from infrastructure.api.system_api import SystemApi
@@ -48,6 +52,24 @@ class MainWindow(Adw.ApplicationWindow):
         self._path_entry.connect("changed", self._on_path_entry_changed)
         header_bar.set_title_widget(self._path_entry)
 
+        # Path + mode ("copy"/"cut") last sent to the clipboard via the
+        # "Copy"/"Cut" context menu entries (see PathPage's on_file_copied
+        # /on_file_cut), and the queue of paste jobs started from the
+        # button _update_paste_button() builds below. Each queue entry is
+        # (source, destination, is_cut) — is_cut picks mv vs cp for that
+        # one job, since jobs already queued keep whatever mode they were
+        # enqueued with even if the clipboard changes afterward.
+        self._clipboard_path: str | None = None
+        self._clipboard_is_cut: bool = False
+        self._paste_queue: list[tuple[str, str, bool]] = []
+        # Fixed-position, permanently packed placeholder — its content is
+        # destroyed and rebuilt by _update_paste_button() (plain "Paste the
+        # file" button, or the pending/badge button), but the slot itself
+        # never moves, so it always stays right of the path entry.
+        self._paste_slot = Gtk.Box()
+        header_bar.pack_end(self._paste_slot)
+        self._paste_badge_css = self._build_paste_badge_css_provider()
+
         self._dark_mode_button = Gtk.Button()
         self._dark_mode_button.connect("clicked", self._on_toggle_dark_mode)
         header_bar.pack_end(self._dark_mode_button)
@@ -81,7 +103,12 @@ class MainWindow(Adw.ApplicationWindow):
         sidebar_scroll.set_size_request(220, -1)
         sidebar_scroll.add_css_class("background")
 
-        self._path_page = PathPage(self._on_path_changed)
+        self._path_page = PathPage(
+            self._on_path_changed,
+            self._refresh_side_menu,
+            self._on_file_copied,
+            self._on_file_cut,
+        )
         self._path_page.set_hexpand(True)
 
         body.append(sidebar_scroll)
@@ -96,13 +123,236 @@ class MainWindow(Adw.ApplicationWindow):
         self._go_to_path(self._current_path)
 
     def _refresh_side_menu(self):
-        self._side_menu.set_items(
-            [
-                SideMenuItem(
-                    "user-home-symbolic", _("Home"), self._home_path, self._go_to_path
-                ),
-            ]
+        items = [
+            SideMenuItem(
+                "user-home-symbolic", _("Home"), self._home_path, self._go_to_path
+            ),
+        ]
+        if self._settings.favorite_list:
+            items.append(None)  # separator between Home and the favorites
+            for favorite in self._settings.favorite_list:
+                items.append(
+                    SideMenuItem(
+                        "folder-symbolic",
+                        favorite.get(UserSettingsEntity.FIELD_FAVORITE_LABEL, ""),
+                        favorite.get(UserSettingsEntity.FIELD_FAVORITE_PATH, ""),
+                        self._go_to_path,
+                        on_remove=self._on_remove_favorite,
+                    )
+                )
+        self._side_menu.set_items(items)
+        self._side_menu.set_selected_path(self._current_path)
+
+    def _on_remove_favorite(self, path: str):
+        self._settings.remove_favorite(path)
+        UserSettingsApi(self._system_api).save()
+        self._refresh_side_menu()
+
+    # --- Paste button (Copy -> Paste the file, with a pending-jobs badge) -
+
+    def _build_paste_badge_css_provider(self) -> Gtk.CssProvider:
+        provider = Gtk.CssProvider()
+        provider.load_from_data(
+            b"""
+            label.paste-badge {
+                background: @accent_bg_color;
+                color: @accent_fg_color;
+                font-size: 0.7em;
+                min-width: 14px;
+                padding: 1px 4px;
+                border-radius: 999px;
+            }
+            """
         )
+        return provider
+
+    def _on_file_copied(self, _name: str, path: str):
+        """Called by PathPage after the "Copy" context menu entry."""
+        self._clipboard_path = path
+        self._clipboard_is_cut = False
+        self._update_paste_button()
+
+    def _on_file_cut(self, _name: str, path: str):
+        """Called by PathPage after the "Cut" context menu entry."""
+        self._clipboard_path = path
+        self._clipboard_is_cut = True
+        self._update_paste_button()
+
+    def _update_paste_button(self):
+        """Empties _paste_slot and rebuilds a fresh button for the current
+        state — a real remove-and-recreate rather than a hidden/shown
+        widget, so a stale button never lingers on screen."""
+        self._clear_paste_slot()
+
+        pending_count = len(self._paste_queue)
+        if pending_count > 0:
+            self._paste_slot.append(self._build_pending_button(pending_count))
+        elif self._clipboard_path:
+            self._paste_slot.append(self._build_ready_button())
+
+    def _clear_paste_slot(self):
+        child = self._paste_slot.get_first_child()
+        while child is not None:
+            next_child = child.get_next_sibling()
+            self._paste_slot.remove(child)
+            child = next_child
+
+    def _build_ready_button(self) -> Gtk.Button:
+        label = _("Move file") if self._clipboard_is_cut else _("Paste the file")
+        button = Gtk.Button(label=label)
+        button.add_css_class("flat")
+        # Absolute path of the copied/cut file/folder, on hover.
+        button.set_tooltip_text(self._clipboard_path)
+        button.connect("clicked", self._on_paste_clicked)
+        return button
+
+    def _build_pending_button(self, count: int) -> Gtk.Button:
+        badge = Gtk.Label(label=str(count))
+        badge.add_css_class("paste-badge")
+        badge.set_halign(Gtk.Align.END)
+        badge.set_valign(Gtk.Align.START)
+        badge.get_style_context().add_provider(
+            self._paste_badge_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        overlay = Gtk.Overlay()
+        overlay.set_child(Gtk.Image.new_from_icon_name("edit-paste-symbolic"))
+        overlay.add_overlay(badge)
+
+        button = Gtk.Button()
+        button.add_css_class("flat")
+        button.set_child(overlay)
+        button.set_sensitive(False)
+        button.set_tooltip_text(_("{count} pending").format(count=count))
+        return button
+
+    def _on_paste_clicked(self, _button):
+        source_path = self._clipboard_path
+        is_cut = self._clipboard_is_cut
+        if not source_path:
+            return
+        # Cleared and removed as soon as clicked — passed along explicitly
+        # from here on, so self._clipboard_path can't make the button
+        # reappear later (e.g. from _update_paste_button once the job
+        # finishes) and can't leak into a second, unrelated paste.
+        self._clipboard_path = None
+        self._clipboard_is_cut = False
+        self._clear_paste_slot()
+        self._try_paste(source_path, is_cut)
+
+    def _try_paste(self, source_path: str, is_cut: bool):
+        name = os.path.basename(source_path.rstrip("/"))
+        destination = os.path.join(self._current_path, name)
+        if self._system_api.file_exists(destination):
+            self._ask_new_name(source_path, name, is_cut)
+        else:
+            self._enqueue_paste(source_path, destination, is_cut)
+
+    def _ask_new_name(self, source_path: str, taken_name: str, is_cut: bool):
+        entry = Gtk.Entry()
+        entry.set_text(taken_name)
+        entry.set_activates_default(True)
+
+        dialog = Adw.AlertDialog(
+            heading=_("File already exists"),
+            body=_(
+                '"{name}" already exists in this folder. Choose a new name.'
+            ).format(name=taken_name),
+        )
+        dialog.set_extra_child(entry)
+        dialog.add_response("cancel", _("Cancel"))
+        action_label = _("Move") if is_cut else _("Paste")
+        dialog.add_response("paste", action_label)
+        dialog.set_default_response("paste")
+        dialog.set_close_response("cancel")
+        dialog.set_response_appearance("paste", Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(_dialog, response):
+            if response != "paste":
+                return
+            new_name = entry.get_text().strip()
+            if not new_name:
+                return
+            destination = os.path.join(self._current_path, new_name)
+            if self._system_api.file_exists(destination):
+                # Still taken: ask again instead of silently overwriting.
+                GLib.idle_add(self._ask_new_name, source_path, new_name, is_cut)
+                return
+            self._enqueue_paste(source_path, destination, is_cut)
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+
+    def _enqueue_paste(self, source_path: str, destination: str, is_cut: bool):
+        was_idle = not self._paste_queue
+        self._paste_queue.append((source_path, destination, is_cut))
+        self._update_paste_button()
+        if was_idle:
+            self._process_next_paste_job()
+
+    def _process_next_paste_job(self):
+        """Runs the head-of-queue copy/move in a background thread (never
+        blocks the UI), same threading.Thread + GLib.idle_add handoff
+        pattern as dupotEasyFlatpak's install/update jobs."""
+        if not self._paste_queue:
+            return
+        source, destination, is_cut = self._paste_queue[0]
+        threading.Thread(
+            target=self._run_copy_job, args=(source, destination, is_cut), daemon=True
+        ).start()
+
+    def _run_copy_job(self, source: str, destination: str, is_cut: bool):
+        # get_copy_call()/get_move_call() already go through flatpak-spawn
+        # --host when running sandboxed (see SystemApi._cmd), so this
+        # "mv"/"cp" runs on the host either way. communicate() (not
+        # wait()) so an error message can't fill the stdout pipe buffer
+        # and deadlock the job.
+        call = (
+            self._system_api.get_move_call(source, destination)
+            if is_cut
+            else self._system_api.get_copy_call(source, destination)
+        )
+        process = subprocess.Popen(
+            call, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        output, _stdin = process.communicate()
+        GLib.idle_add(
+            self._on_copy_job_done,
+            process.returncode,
+            output.strip(),
+            source,
+            destination,
+            is_cut,
+        )
+
+    def _on_copy_job_done(
+        self, returncode: int, output: str, source: str, destination: str, is_cut: bool
+    ):
+        if self._paste_queue:
+            self._paste_queue.pop(0)
+        self._update_paste_button()
+        if returncode == 0:
+            self._path_page.refresh_path(os.path.dirname(destination))
+            if is_cut:
+                self._path_page.refresh_path(os.path.dirname(source))
+        else:
+            self._show_copy_error(source, output, is_cut)
+        self._process_next_paste_job()
+        return False
+
+    def _show_copy_error(self, source: str, output: str, is_cut: bool):
+        name = os.path.basename(source.rstrip("/"))
+        body = (
+            _('Could not move "{name}" to this folder.').format(name=name)
+            if is_cut
+            else _('Could not copy "{name}" to this folder.').format(name=name)
+        )
+        if output:
+            body += "\n\n" + output
+        heading = _("Move failed") if is_cut else _("Copy failed")
+        dialog = Adw.AlertDialog(heading=heading, body=body)
+        dialog.add_response("ok", _("OK"))
+        dialog.present(self)
 
     def _go_to_path(self, path: str):
         """Full reset: used for sidebar navigation and the initial load,

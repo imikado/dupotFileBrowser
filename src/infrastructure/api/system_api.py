@@ -72,3 +72,23 @@ class SystemApi(SystemApiContract):
             return info.get_content_type() or "application/octet-stream"
         except GLib.Error:
             return "application/octet-stream"
+
+    def is_running_flatpak(self) -> bool:
+        return bool(os.environ.get("FLATPAK_ID"))
+
+    def _cmd(self, *args) -> list:
+        # Inside the Flatpak sandbox, host binaries aren't on PATH and
+        # can't be exec'd directly — flatpak-spawn --host runs them on the
+        # host instead (needs --talk-name=org.freedesktop.Flatpak in the
+        # manifest). Same mechanism as dupotEasyFlatpak's FlatpakApi._cmd.
+        prefix = ["flatpak-spawn", "--host"] if self.is_running_flatpak() else []
+        return prefix + list(args)
+
+    def get_copy_call(self, source: str, destination: str) -> list:
+        # `cp -a` (not shutil) so it runs as a real subprocess we can
+        # background via threading + flatpak-spawn, and preserves
+        # timestamps/permissions like the host's file manager would.
+        return self._cmd("cp", "-a", "--", source, destination)
+
+    def get_move_call(self, source: str, destination: str) -> list:
+        return self._cmd("mv", "--", source, destination)

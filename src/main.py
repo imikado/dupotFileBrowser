@@ -57,6 +57,9 @@ def main():
 
     settings = UserSettingsEntity()
     settings_path = path_conf.get_user_settings_path()
+
+    print('load settings_path '+settings_path+' (if exist)')
+
     if system_api.file_exists(settings_path):
         settings.load(system_api.read_json_file_obj(settings_path))
         if settings.version != UserSettingsEntity.DEFAULT_VERSION:

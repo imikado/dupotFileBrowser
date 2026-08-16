@@ -48,3 +48,11 @@ class SystemApiContract(ABC):
     @abstractmethod
     def get_content_type(self, path: str) -> str:
         pass
+
+    @abstractmethod
+    def get_copy_call(self, source: str, destination: str) -> list:
+        pass
+
+    @abstractmethod
+    def get_move_call(self, source: str, destination: str) -> list:
+        pass
