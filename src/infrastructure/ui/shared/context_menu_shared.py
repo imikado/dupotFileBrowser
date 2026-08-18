@@ -5,7 +5,7 @@ gi.require_version("Gdk", "4.0")
 
 from gi.repository import Gdk, GLib, Gtk
 
-from infrastructure.ui.shared.popup_shared import popup_deferred
+from infrastructure.ui.shared.popup_shared import close_then_run, popup_deferred
 
 # Generous per-row padding so the *entire* row is clickable, not just the
 # label text — a tight hit box is what made an imprecise click land on
@@ -71,59 +71,11 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
         # once past the popover's edge, to autohide (closes, no action).
         btn.set_hexpand(True)
 
-        def _on_click(_b):
-            # Don't popdown()/unparent() synchronously from inside this
-            # very button's own "clicked" handler: GTK is still mid-way
-            # through its press/release bookkeeping for this button, and
-            # ripping the popover (hence the button) out of the widget
-            # tree right now corrupts that bookkeeping — surfaces as
-            # "Gtk-WARNING: Broken accounting of active state for widget"
-            # (seen in the Flatpak build). Deferring one tick lets the
-            # click event finish unwinding before we touch the tree.
-            GLib.idle_add(_start_close)
-
-        def _start_close():
-            # Wait for the popover to actually finish closing — its real
-            # "closed" signal, not just calling popdown() — before running
-            # the action. on_click often opens its own follow-up popup
-            # (Add Color, Open With…); firing it after a fixed one-tick
-            # GLib.idle_add instead of this signal raced this popover's
-            # own close animation/pointer-grab teardown, which could still
-            # be in flight past that one tick — the new popup would then
-            # open while the old grab hadn't been released yet and end up
-            # not showing at all (see popup_deferred, same root cause).
-            #
-            # But "closed" isn't guaranteed either: a click can land on a
-            # row's button while the popover is still mid-way through its
-            # own *opening* transition (show_context_menu's popup_deferred
-            # only just showed it — right-click-then-immediately-click is
-            # the normal, fast way to use a context menu). Interrupting
-            # that in-flight open with popdown() can leave GTK without a
-            # clean "closed" emission, so the handler above would then
-            # wait forever and the click would silently do nothing — the
-            # menu visibly closes but the action never runs. The guarded
-            # fallback below runs the action on a short timeout regardless,
-            # so a missing "closed" signal degrades to a barely-noticeable
-            # delay instead of a dropped action; whichever fires first wins
-            # and the other becomes a no-op.
-            ran = False
-
-            def _run_once():
-                nonlocal ran
-                if not ran:
-                    ran = True
-                    item.on_click()
-
-            def _on_timeout():
-                _run_once()
-                return False
-
-            popover.connect("closed", lambda _p: _run_once())
-            popover.popdown()
-            GLib.timeout_add(200, _on_timeout)
-            return False
-
-        btn.connect("clicked", _on_click)
+        # See close_then_run: on_click often opens its own follow-up
+        # popup (Add Color, Open With…), so this button must not
+        # popdown()/run it synchronously from inside its own "clicked"
+        # handler.
+        btn.connect("clicked", lambda _b: close_then_run(popover, item.on_click))
         return btn
 
     for item in item_list:

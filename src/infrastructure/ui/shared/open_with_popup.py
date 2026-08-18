@@ -7,7 +7,7 @@ gi.require_version("Gio", "2.0")
 
 from gi.repository import Gio, GLib, Gtk
 
-from infrastructure.ui.shared.popup_shared import popup_deferred
+from infrastructure.ui.shared.popup_shared import close_then_run, popup_deferred
 
 
 def get_app_choices(content_type: str):
@@ -97,19 +97,21 @@ def show_open_with_popup(row, path: str, system_api):
     popover.set_autohide(True)
     popover.connect("closed", lambda p: p.unparent())
 
-    def on_open_clicked(_button):
-        popover.popdown()
+    def _open():
         index = dropdown.get_selected()
         if 0 <= index < len(app_infos):
             app_infos[index].launch([Gio.File.new_for_path(path)], None)
         else:
             show_app_chooser_dialog(row.get_root(), path, content_type)
 
-    open_button.connect("clicked", on_open_clicked)
+    # See close_then_run: don't popdown() synchronously from inside
+    # these buttons' own "clicked" handler (Flatpak-observed GTK
+    # bookkeeping corruption that can silently drop the click).
+    open_button.connect("clicked", lambda _b: close_then_run(popover, _open))
     # Filet de sécurité explicite : même si l'autohide/Escape est
     # perturbé par le popup() différé (voir popup_deferred), un clic sur
     # Cancel referme toujours la popover.
-    cancel_button.connect("clicked", lambda _b: popover.popdown())
+    cancel_button.connect("clicked", lambda _b: close_then_run(popover, lambda: None))
     # See popup_deferred: this popover is opened from inside the
     # right-click menu's own "Open With…" item activation, so it must not
     # popup() synchronously either.

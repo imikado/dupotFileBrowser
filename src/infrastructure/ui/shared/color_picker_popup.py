@@ -4,7 +4,7 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import GLib, Gtk
 
-from infrastructure.ui.shared.popup_shared import popup_deferred
+from infrastructure.ui.shared.popup_shared import close_then_run, popup_deferred
 
 SWATCH_SIZE = 28
 _COLUMNS = 4
@@ -58,8 +58,10 @@ def show_color_picker_popup(parent_widget, on_color_selected, selected_color=Non
     popover.connect("closed", lambda p: p.unparent())
 
     def _select(color):
-        popover.popdown()
-        GLib.idle_add(on_color_selected, color)
+        # See close_then_run: don't popdown() synchronously from inside
+        # this swatch's own "clicked" handler (Flatpak-observed GTK
+        # bookkeeping corruption that can silently drop the click).
+        close_then_run(popover, lambda: on_color_selected(color))
 
     for index, (label, hex_color) in enumerate(_PALETTE):
         selected = bool(selected_color) and selected_color.lower() == hex_color.lower()
