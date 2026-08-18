@@ -2,37 +2,41 @@ from gi.repository import GLib
 
 
 def run_then_close(popover, action) -> None:
-    """Runs `action` right now — synchronously, before `popover` closes
-    — then pops `popover` down on the next idle iteration.
+    """Pops `popover` down, then runs `action` — both from a single
+    high-priority idle callback, `popover.popdown()` first.
 
-    This used to run the other way around (close first, run `action`
-    once "closed" fired or a timeout elapsed), to avoid opening a
-    follow-up popup while the old grab hadn't been released yet. In
-    practice that ordering was the less reliable one: waiting on
-    "closed" (which isn't always emitted — see popup_deferred) or a
-    fixed timeout is itself a race, and it was still possible for the
-    click to visibly close the menu without `action` ever running —
-    exactly the "right-click menu opens, but clicking an item does
-    nothing" symptom (seen intermittently in the Flatpak build).
-    Running `action` first removes that race entirely: it always fires,
-    synchronously, in direct response to the click.
+    Neither step can happen synchronously inside the button's own
+    "clicked" handler: GTK is still mid-way through press/release
+    bookkeeping for that button at that point, and touching the popover
+    right then corrupts it — "Gtk-WARNING: Broken accounting of active
+    state for widget" (seen in the Flatpak build). Hence the single
+    GLib.idle_add wrapping both.
 
-    A follow-up popup opened by `action` (Add Color, Open With…) is
-    safe to open here, with `popover` still technically open: every
-    such popup already goes through popup_deferred, which defers its
-    own popup() to the next *high-priority* idle turn. popdown() below
-    is queued at plain (lower) idle priority, so the follow-up popup's
-    popup() runs first and takes the pointer grab — GTK then closes
-    `popover` on its own as a side effect of losing that grab, and this
-    popdown() call just confirms it.
+    `action` used to run first, with popdown() only queued afterwards
+    (at plain idle priority) on the theory that a follow-up popup
+    opened by `action` (Add Color, Open With…) would simply steal the
+    grab and let `popover` close as a side effect. It doesn't: that
+    follow-up popup schedules its own popup() via popup_deferred at
+    GLib.PRIORITY_HIGH_IDLE, which then ran *before* this plain-priority
+    popdown() — so for one idle turn two popovers held a grab at once,
+    which is exactly the accounting corruption above (still reported
+    against `popover`'s own widgets afterwards).
 
-    popdown() is deferred to idle rather than called synchronously here
-    because doing it synchronously from inside this very button's own
-    "clicked" handler corrupts GTK's press/release bookkeeping for that
-    button — "Gtk-WARNING: Broken accounting of active state for
-    widget" (also seen in the Flatpak build)."""
-    action()
-    GLib.idle_add(popover.popdown)
+    popdown() first, in the same PRIORITY_HIGH_IDLE callback, avoids
+    that: `popover` is fully closed before `action` runs, so any
+    follow-up popup it opens (also PRIORITY_HIGH_IDLE, but queued after
+    this callback — same priority runs in queue order) only ever grabs
+    once `popover` has already let go. Running both from one callback
+    also means `action` always fires — it isn't gated on `popover`'s own
+    "closed" signal (which isn't always emitted — see popup_deferred) or
+    a timeout race, which is what let clicks silently do nothing before."""
+
+    def _run() -> bool:
+        popover.popdown()
+        action()
+        return False
+
+    GLib.idle_add(_run, priority=GLib.PRIORITY_HIGH_IDLE)
 
 
 def popup_deferred(popover) -> bool:
