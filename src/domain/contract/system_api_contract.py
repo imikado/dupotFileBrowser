@@ -44,6 +44,10 @@ class SystemApiContract(ABC):
         pass
 
     @abstractmethod
+    def open_with_chooser(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
     def get_uri(self, path: str) -> str:
         pass
 

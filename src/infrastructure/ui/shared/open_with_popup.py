@@ -60,6 +60,17 @@ def show_open_with_popup(row, path: str, system_api):
     """Popover with a dropdown of every application registered for this
     file's type, the system default pre-selected, plus a way to browse
     the full application list for anything not registered."""
+    if system_api.is_running_flatpak():
+        # See SystemApi.open_with_chooser: GIO can't enumerate host apps
+        # from inside the sandbox (confirmed empirically — it's a
+        # deliberate security boundary, not an XDG_DATA_DIRS visibility
+        # gap), so there is no list to build this dropdown from — every
+        # app_infos below would come back next to empty. Hand off
+        # straight to the portal's own native chooser instead, which
+        # runs outside the sandbox with the host's real app list.
+        system_api.open_with_chooser(path)
+        return
+
     content_type = system_api.get_content_type(path)
     app_infos, _default_app, default_index = get_app_choices(content_type)
 

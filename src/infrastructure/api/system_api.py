@@ -102,6 +102,59 @@ class SystemApi(SystemApiContract):
         except GLib.Error:
             return False
 
+    def open_with_chooser(self, path: str) -> bool:
+        """Asks the xdg-desktop-portal to show its native "Open With"
+        chooser for `path`, listing whatever apps are registered for it
+        — always asking, never silently launching the default.
+
+        Only meaningful under Flatpak (see open_with_popup.py's use of
+        this): natively, Gio.AppInfo.get_all_for_type() already lists
+        every registered app directly, no portal needed. Under Flatpak
+        that same call comes back with next to nothing — not an
+        XDG_DATA_DIRS visibility problem (--filesystem=host does put
+        the host's applications/*.desktop files within reach), but a
+        deliberate GIO/Flatpak security boundary: confirmed empirically
+        that Gio.DesktopAppInfo.new_from_filename() returns NULL for
+        ~97% of a real host's *.desktop files when called from inside
+        the sandbox, host system files included, so there's no local
+        API that can list them. The portal is the sanctioned way
+        around that — its chooser dialog runs outside the sandbox, with
+        the host's real app list, and launches the pick itself.
+
+        OpenFile (not OpenURI) takes an open fd rather than a path/URI:
+        the portal reads the file itself to resolve its type, so this
+        works even for a path the portal process couldn't otherwise
+        resolve from inside our sandboxed view of the filesystem."""
+        try:
+            fd = os.open(path, os.O_RDONLY)
+        except OSError:
+            return False
+        try:
+            fd_list = Gio.UnixFDList.new()
+            index = fd_list.append(fd)
+        finally:
+            os.close(fd)  # appended fd is dup()'d; our copy is done with
+
+        parameters = GLib.Variant(
+            "(sha{sv})", ("", index, {"ask": GLib.Variant("b", True)})
+        )
+        try:
+            Gio.bus_get_sync(Gio.BusType.SESSION, None).call_with_unix_fd_list_sync(
+                "org.freedesktop.portal.Desktop",
+                "/org/freedesktop/portal/desktop",
+                "org.freedesktop.portal.OpenURI",
+                "OpenFile",
+                parameters,
+                GLib.VariantType.new("(o)"),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                fd_list,
+                None,
+            )
+            return True
+        except GLib.Error:
+            return False
+
     def get_uri(self, path: str) -> str:
         return Gio.File.new_for_path(path).get_uri()
 
