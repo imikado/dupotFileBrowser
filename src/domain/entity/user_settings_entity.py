@@ -20,6 +20,7 @@ class UserSettingsEntity:
     FIELD_VERSION = "version"
     FIELD_THEME = "theme"
     FIELD_LANGUAGE = "language"
+    FIELD_USE_SYSTEM_ICON_THEME = "useSystemIconTheme"
     FIELD_FAVORITE_LIST = "favoriteList"
     FIELD_FAVORITE_LABEL = "label"
     FIELD_FAVORITE_PATH = "path"
@@ -31,6 +32,9 @@ class UserSettingsEntity:
     DEFAULT_VERSION = 1
     DEFAULT_THEME = THEME_SYSTEM
     DEFAULT_LANGUAGE = LANGUAGE_SYSTEM
+    # Off by default: the host icon theme may not cover every file type
+    # (see file_icons.py) — baked icons stay the safe out-of-the-box choice.
+    DEFAULT_USE_SYSTEM_ICON_THEME = False
     # Matches MainWindow's previous hardcoded set_default_size(1000, 700).
     DEFAULT_WINDOW_WIDTH = 1000
     DEFAULT_WINDOW_HEIGHT = 700
@@ -38,6 +42,7 @@ class UserSettingsEntity:
     version: int = DEFAULT_VERSION
     theme: str = DEFAULT_THEME
     language: str = DEFAULT_LANGUAGE
+    use_system_icon_theme: bool = DEFAULT_USE_SYSTEM_ICON_THEME
     window_width: int = DEFAULT_WINDOW_WIDTH
     window_height: int = DEFAULT_WINDOW_HEIGHT
     # Each item is {"label": <dir name>, "path": <absolute path>}.
@@ -62,6 +67,7 @@ class UserSettingsEntity:
         self.version = self.DEFAULT_VERSION
         self.theme = self.DEFAULT_THEME
         self.language = self.DEFAULT_LANGUAGE
+        self.use_system_icon_theme = self.DEFAULT_USE_SYSTEM_ICON_THEME
         self.window_width = self.DEFAULT_WINDOW_WIDTH
         self.window_height = self.DEFAULT_WINDOW_HEIGHT
         self.favorite_list = []
@@ -70,6 +76,9 @@ class UserSettingsEntity:
         self.version = raw_obj.get(self.FIELD_VERSION, self.DEFAULT_VERSION)
         self.theme = raw_obj.get(self.FIELD_THEME, self.DEFAULT_THEME)
         self.language = raw_obj.get(self.FIELD_LANGUAGE, self.DEFAULT_LANGUAGE)
+        self.use_system_icon_theme = raw_obj.get(
+            self.FIELD_USE_SYSTEM_ICON_THEME, self.DEFAULT_USE_SYSTEM_ICON_THEME
+        )
         self.window_width = raw_obj.get(self.FIELD_WINDOW_WIDTH, self.DEFAULT_WINDOW_WIDTH)
         self.window_height = raw_obj.get(self.FIELD_WINDOW_HEIGHT, self.DEFAULT_WINDOW_HEIGHT)
         self.favorite_list = raw_obj.get(self.FIELD_FAVORITE_LIST, [])
@@ -80,6 +89,7 @@ class UserSettingsEntity:
                 self.FIELD_VERSION: self.version,
                 self.FIELD_THEME: self.theme,
                 self.FIELD_LANGUAGE: self.language,
+                self.FIELD_USE_SYSTEM_ICON_THEME: self.use_system_icon_theme,
                 self.FIELD_WINDOW_WIDTH: self.window_width,
                 self.FIELD_WINDOW_HEIGHT: self.window_height,
                 self.FIELD_FAVORITE_LIST: self.favorite_list,

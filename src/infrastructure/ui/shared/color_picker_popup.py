@@ -34,10 +34,12 @@ _PALETTE = [
 ]
 
 
-def show_color_picker_popup(parent_widget, on_color_selected):
+def show_color_picker_popup(parent_widget, on_color_selected, selected_color=None):
     """A small grid popover of color swatches, with a full-width "Remove
     Color" button below it. on_color_selected(hex) is called once, right
-    after the popover starts closing — with None for "Remove Color"."""
+    after the popover starts closing — with None for "Remove Color".
+    selected_color, if given, is the entry's current color (its own hex
+    from _PALETTE) — that swatch is drawn with a ring around it."""
     container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     container.set_margin_top(10)
     container.set_margin_bottom(10)
@@ -60,7 +62,8 @@ def show_color_picker_popup(parent_widget, on_color_selected):
         GLib.idle_add(on_color_selected, color)
 
     for index, (label, hex_color) in enumerate(_PALETTE):
-        swatch = _build_swatch(_(label), hex_color)
+        selected = bool(selected_color) and selected_color.lower() == hex_color.lower()
+        swatch = _build_swatch(_(label), hex_color, selected)
         swatch.connect("clicked", lambda _b, color=hex_color: _select(color))
         grid.attach(swatch, index % _COLUMNS, index // _COLUMNS, 1, 1)
 
@@ -74,12 +77,20 @@ def show_color_picker_popup(parent_widget, on_color_selected):
     GLib.idle_add(popup_deferred, popover, priority=GLib.PRIORITY_HIGH_IDLE)
 
 
-def _build_swatch(label: str, hex_color: str) -> Gtk.Button:
+def _build_swatch(label: str, hex_color: str, selected: bool = False) -> Gtk.Button:
     swatch = Gtk.Button()
     swatch.set_tooltip_text(label)
     swatch.add_css_class("circular")
     swatch.set_size_request(SWATCH_SIZE, SWATCH_SIZE)
 
+    # The currently-applied color gets a ring around it: a theme-bg halo
+    # so it reads against the swatch's own hue, then an accent-colored
+    # outer ring so it reads against the popover background too.
+    ring_css = (
+        "box-shadow: 0 0 0 2px @theme_bg_color, 0 0 0 4px @accent_bg_color;"
+        if selected
+        else ""
+    )
     provider = Gtk.CssProvider()
     provider.load_from_data(
         f"""
@@ -87,6 +98,7 @@ def _build_swatch(label: str, hex_color: str) -> Gtk.Button:
             background: {hex_color};
             min-width: {SWATCH_SIZE}px;
             min-height: {SWATCH_SIZE}px;
+            {ring_css}
         }}
         """.encode()
     )

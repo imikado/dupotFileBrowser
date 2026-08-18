@@ -51,6 +51,19 @@ class ParametersDialog(Adw.PreferencesDialog):
         self._language_row.connect("notify::selected", lambda *_: self._on_change())
         appearance_group.add(self._language_row)
 
+        self._system_icon_row = Adw.SwitchRow()
+        self._system_icon_row.set_title(_("Use system icon theme"))
+        self._system_icon_row.set_subtitle(
+            _(
+                "Show the same file icons as your file manager (Nemo, "
+                "Nautilus...). Falls back to the built-in icons for any "
+                "file type your theme doesn't cover."
+            )
+        )
+        self._system_icon_row.set_active(self._settings.use_system_icon_theme)
+        self._system_icon_row.connect("notify::active", lambda *_: self._on_change())
+        appearance_group.add(self._system_icon_row)
+
         save_group = Adw.PreferencesGroup()
         page.add(save_group)
 
@@ -76,6 +89,10 @@ class ParametersDialog(Adw.PreferencesDialog):
         language_changed = new_language != self._settings.language
         self._settings.language = new_language
 
+        new_use_system_icon_theme = self._system_icon_row.get_active()
+        icon_theme_changed = new_use_system_icon_theme != self._settings.use_system_icon_theme
+        self._settings.use_system_icon_theme = new_use_system_icon_theme
+
         self._user_settings_api.save()
 
         if self._on_saved:
@@ -83,7 +100,9 @@ class ParametersDialog(Adw.PreferencesDialog):
 
         self.close()
 
-        if language_changed:
-            # gettext translations are bound at process start — restart to
-            # pick up the new language, same trick as dupotEasyFlatpak.
+        if language_changed or icon_theme_changed:
+            # gettext translations are bound at process start (language),
+            # and every icon already on screen was built under the old
+            # icon-theme choice (icon theme) — restart to make either
+            # change take effect everywhere, same trick as dupotEasyFlatpak.
             os.execv(sys.executable, [sys.executable] + sys.argv)

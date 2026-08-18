@@ -503,7 +503,6 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_settings_saved(self):
         self._apply_theme()
-        self._update_dark_mode_icon()
 
     def _on_menu_about(self, _action, _param):
         about = Adw.AboutDialog.new()

@@ -120,6 +120,9 @@ class _Column(Gtk.Frame):
             if entry.is_dir:
                 row.add_suffix(build_icon_image("go-next"))
             row.entry = entry
+            # Stashed so the "Add Color" popup (_on_row_context_menu) can
+            # highlight this entry's current color without re-querying it.
+            row.color = color
 
             # Files only open on a double click (see PathPage._open_entry);
             # a single click just selects, like GtkListBox already does.
@@ -415,7 +418,9 @@ class PathPage(Gtk.Box):
             ContextMenuItem(
                 _("Add Color"),
                 lambda: show_color_picker_popup(
-                    row, lambda color: self._set_color(entry, color)
+                    row,
+                    lambda color: self._set_color(entry, color),
+                    selected_color=getattr(row, "color", None),
                 ),
             )
         )
