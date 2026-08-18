@@ -1,5 +1,4 @@
 import os
-import subprocess
 import threading
 
 import gi
@@ -19,7 +18,7 @@ from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShare
 from infrastructure.ui.trash_page import TrashPage
 
 APP_ID = "org.dupot.filebrowser"
-APP_VERSION = "1.0.14"
+APP_VERSION = "1.0.15"
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -371,24 +370,19 @@ class MainWindow(Adw.ApplicationWindow):
         ).start()
 
     def _run_copy_job(self, source: str, destination: str, is_cut: bool):
-        # get_copy_call()/get_move_call() already go through flatpak-spawn
-        # --host when running sandboxed (see SystemApi._cmd), so this
-        # "mv"/"cp" runs on the host either way. communicate() (not
-        # wait()) so an error message can't fill the stdout pipe buffer
-        # and deadlock the job.
-        call = (
-            self._system_api.get_move_call(source, destination)
+        # copy_path()/move_path() run in-process (shutil) — no host
+        # subprocess needed, --filesystem=host already gives direct access
+        # to both source and destination. Still off the main thread since
+        # a large copy/move is blocking.
+        error = (
+            self._system_api.move_path(source, destination)
             if is_cut
-            else self._system_api.get_copy_call(source, destination)
+            else self._system_api.copy_path(source, destination)
         )
-        process = subprocess.Popen(
-            call, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        )
-        output, _stdin = process.communicate()
         GLib.idle_add(
             self._on_copy_job_done,
-            process.returncode,
-            output.strip(),
+            0 if error is None else 1,
+            error or "",
             source,
             destination,
             is_cut,

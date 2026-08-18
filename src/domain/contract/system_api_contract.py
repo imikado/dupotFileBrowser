@@ -64,11 +64,11 @@ class SystemApiContract(ABC):
         pass
 
     @abstractmethod
-    def get_copy_call(self, source: str, destination: str) -> list:
+    def copy_path(self, source: str, destination: str) -> str | None:
         pass
 
     @abstractmethod
-    def get_move_call(self, source: str, destination: str) -> list:
+    def move_path(self, source: str, destination: str) -> str | None:
         pass
 
     @abstractmethod

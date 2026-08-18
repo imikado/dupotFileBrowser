@@ -1,5 +1,4 @@
 import os
-import subprocess
 
 import gi
 
@@ -19,8 +18,8 @@ def show_rename_dialog(
 ):
     """Adw.AlertDialog asking for a new name for `path` (currently called
     `name`). Validates the destination is free — re-asking, with the
-    attempted name kept, if it isn't — performs the rename via `mv`
-    (system_api.get_move_call), and calls on_renamed(destination) once it
+    attempted name kept, if it isn't — performs the rename via
+    system_api.move_path, and calls on_renamed(destination) once it
     succeeds. Shows its own error dialog on failure."""
     name_entry = Gtk.Entry()
     name_entry.set_text(initial_name or name)
@@ -59,15 +58,13 @@ def show_rename_dialog(
 
 
 def _perform_rename(root, system_api, name: str, path: str, destination: str, on_renamed):
-    # get_move_call() goes through flatpak-spawn --host when sandboxed,
-    # same as the Cut/Paste "move" job (see SystemApi._cmd). A rename is a
-    # same-directory move, so it runs synchronously — it's a plain
-    # filesystem rename, not a data copy.
-    result = subprocess.run(
-        system_api.get_move_call(path, destination), capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        _show_rename_error(root, name, result.stdout + result.stderr)
+    # move_path() runs in-process (shutil.move), same as the Cut/Paste
+    # "move" job (see SystemApi.move_path). A rename is a same-directory
+    # move, so it runs synchronously — it's a plain filesystem rename, not
+    # a data copy.
+    error = system_api.move_path(path, destination)
+    if error is not None:
+        _show_rename_error(root, name, error)
         return
     on_renamed(destination)
 

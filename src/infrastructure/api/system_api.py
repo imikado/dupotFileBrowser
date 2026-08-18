@@ -246,22 +246,33 @@ class SystemApi(SystemApiContract):
     def is_running_flatpak(self) -> bool:
         return bool(os.environ.get("FLATPAK_ID"))
 
-    def _cmd(self, *args) -> list:
-        # Inside the Flatpak sandbox, host binaries aren't on PATH and
-        # can't be exec'd directly — flatpak-spawn --host runs them on the
-        # host instead (needs --talk-name=org.freedesktop.Flatpak in the
-        # manifest). Same mechanism as dupotEasyFlatpak's FlatpakApi._cmd.
-        prefix = ["flatpak-spawn", "--host"] if self.is_running_flatpak() else []
-        return prefix + list(args)
+    def copy_path(self, source: str, destination: str) -> str | None:
+        """Recursive copy preserving symlinks/timestamps/permissions, the
+        same semantics as `cp -a` — but done in-process with shutil rather
+        than shelling out to a host `cp` via flatpak-spawn. No sandbox
+        escape needed for this: --filesystem=host already gives direct
+        read/write access to both source and destination (see
+        org.dupot.filebrowser.yml). Returns None on success, or an error
+        message string on failure (caller displays it, mirrors the old
+        subprocess stdout+stderr text)."""
+        try:
+            if os.path.isdir(source) and not os.path.islink(source):
+                shutil.copytree(source, destination, symlinks=True, copy_function=shutil.copy2)
+            else:
+                shutil.copy2(source, destination, follow_symlinks=False)
+            return None
+        except (OSError, shutil.Error) as error:
+            return str(error)
 
-    def get_copy_call(self, source: str, destination: str) -> list:
-        # `cp -a` (not shutil) so it runs as a real subprocess we can
-        # background via threading + flatpak-spawn, and preserves
-        # timestamps/permissions like the host's file manager would.
-        return self._cmd("cp", "-a", "--", source, destination)
-
-    def get_move_call(self, source: str, destination: str) -> list:
-        return self._cmd("mv", "--", source, destination)
+    def move_path(self, source: str, destination: str) -> str | None:
+        """Same idea as copy_path — shutil.move in-process instead of a
+        host `mv` via flatpak-spawn. None on success, error text on
+        failure."""
+        try:
+            shutil.move(source, destination)
+            return None
+        except (OSError, shutil.Error) as error:
+            return str(error)
 
     def _get_real_trash_base_dir(self) -> str:
         # Deliberately NOT GLib.get_user_data_dir(): under Flatpak that
