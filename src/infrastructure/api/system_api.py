@@ -1,8 +1,11 @@
 import configparser
+import grp
 import json
 import os
+import pwd
 import re
 import shutil
+import stat
 import urllib.parse
 from datetime import datetime
 
@@ -14,6 +17,7 @@ from gi.repository import Gio, GLib
 
 from domain.contract.system_api_contract import SystemApiContract
 from domain.entity.file_entry_entity import FileEntryEntity
+from domain.entity.file_properties_entity import FilePropertiesEntity
 from domain.entity.trash_entry_entity import TrashEntryEntity
 
 METADATA_FILENAME = ".dupotFileBrowser"
@@ -109,6 +113,82 @@ class SystemApi(SystemApiContract):
             return info.get_content_type() or "application/octet-stream"
         except GLib.Error:
             return "application/octet-stream"
+
+    def get_file_properties(self, path: str) -> FilePropertiesEntity:
+        """Read straight off the filesystem with os.stat — no portal
+        needed, --filesystem=host already gives full access (see
+        org.dupot.filebrowser.yml). uid/gid resolve fine for the host's
+        files too: Flatpak shares the host's user namespace, it doesn't
+        remap ids."""
+        name = os.path.basename(path.rstrip("/")) or path
+        location = self.get_parent_dir(path)
+        is_dir = self.is_dir(path)
+
+        content_type = self.get_content_type(path)
+        type_description = Gio.content_type_get_description(content_type) or content_type
+
+        try:
+            info = os.stat(path)
+        except OSError:
+            info = None
+
+        if info is None:
+            size_display = "—"
+            modified_display = None
+            owner = None
+            group = None
+            permissions_display = None
+            mode = None
+        else:
+            if is_dir:
+                try:
+                    item_count = len(os.listdir(path))
+                    size_display = _("{count} items").format(count=item_count)
+                except OSError:
+                    size_display = "—"
+            else:
+                size_display = GLib.format_size(info.st_size)
+
+            modified_display = datetime.fromtimestamp(info.st_mtime).strftime(
+                "%Y-%m-%d %H:%M"
+            )
+
+            try:
+                owner = pwd.getpwuid(info.st_uid).pw_name
+            except KeyError:
+                owner = str(info.st_uid)
+            try:
+                group = grp.getgrgid(info.st_gid).gr_name
+            except KeyError:
+                group = str(info.st_gid)
+
+            mode = stat.S_IMODE(info.st_mode)
+            permissions_display = f"{stat.filemode(info.st_mode)} ({mode:03o})"
+
+        return FilePropertiesEntity(
+            name=name,
+            location=location,
+            type_description=type_description,
+            size_display=size_display,
+            modified_display=modified_display,
+            owner=owner,
+            group=group,
+            permissions_display=permissions_display,
+            mode=mode,
+            is_dir=is_dir,
+        )
+
+    def set_file_permissions(self, path: str, mode: int) -> bool:
+        """chmod, straight on the host path — no flatpak-spawn needed,
+        the sandbox already sees this file directly (--filesystem=host),
+        same as get_file_properties' os.stat above. False (not raised) on
+        failure — e.g. a root-owned file the sandboxed user can't chmod —
+        so the Permissions tab can show that inline instead of crashing."""
+        try:
+            os.chmod(path, mode)
+            return True
+        except OSError:
+            return False
 
     def is_running_flatpak(self) -> bool:
         return bool(os.environ.get("FLATPAK_ID"))

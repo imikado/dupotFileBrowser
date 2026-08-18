@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from domain.entity.file_entry_entity import FileEntryEntity
+from domain.entity.file_properties_entity import FilePropertiesEntity
 from domain.entity.trash_entry_entity import TrashEntryEntity
 
 
@@ -48,6 +49,14 @@ class SystemApiContract(ABC):
 
     @abstractmethod
     def get_content_type(self, path: str) -> str:
+        pass
+
+    @abstractmethod
+    def get_file_properties(self, path: str) -> FilePropertiesEntity:
+        pass
+
+    @abstractmethod
+    def set_file_permissions(self, path: str, mode: int) -> bool:
         pass
 
     @abstractmethod

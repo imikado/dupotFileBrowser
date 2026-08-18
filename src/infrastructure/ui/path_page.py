@@ -15,6 +15,7 @@ from infrastructure.ui.shared.confirm_dialog import show_confirm_dialog
 from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
 from infrastructure.ui.shared.file_icons import build_icon_image, build_folder_icon_image
 from infrastructure.ui.shared.open_with_popup import show_open_with_popup
+from infrastructure.ui.shared.properties_dialog import show_properties_dialog
 from infrastructure.ui.shared.rename_dialog import show_rename_dialog
 
 COLUMN_WIDTH = 260
@@ -421,6 +422,14 @@ class PathPage(Gtk.Box):
                     row,
                     lambda color: self._set_color(entry, color),
                     selected_color=getattr(row, "color", None),
+                ),
+            )
+        )
+        item_list.append(
+            ContextMenuItem(
+                _("Properties"),
+                lambda: show_properties_dialog(
+                    row.get_root(), self._system_api, entry.name, entry.path, entry.is_dir
                 ),
             )
         )
