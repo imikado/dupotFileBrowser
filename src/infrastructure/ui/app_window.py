@@ -19,7 +19,7 @@ from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShare
 from infrastructure.ui.trash_page import TrashPage
 
 APP_ID = "org.dupot.filebrowser"
-APP_VERSION = "1.0.10"
+APP_VERSION = "1.0.11"
 
 
 class MainWindow(Adw.ApplicationWindow):

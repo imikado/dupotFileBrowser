@@ -27,7 +27,46 @@ def _ensure_gvfs_metadata_discoverable():
             return
 
 
+def _ensure_host_apps_discoverable():
+    """Under Flatpak, GIO's app database (Gio.AppInfo.get_all_for_type,
+    used by open_with_popup.py's "Open With" list) only scans
+    $XDG_DATA_DIRS as the sandbox sets it up — /app/share:/usr/share,
+    i.e. this Flatpak's own bundled share dir plus org.gnome.Platform's,
+    neither of which has the host's actual applications/*.desktop files
+    — so that list comes back near-empty even though the host has
+    plenty of apps registered. "Open" itself (double-click / the
+    context menu's "Open" entry) still works fine because
+    Gio.AppInfo.launch_default_for_uri() (SystemApi.open_path) is
+    routed through the xdg-desktop-portal instead, which isn't affected
+    by this — only the *list* of choices is.
+
+    --filesystem=host (already granted, for browsing the whole
+    filesystem) bind-mounts the real host root at /run/host, so
+    prepending its applications dirs to XDG_DATA_DIRS lets GIO's own
+    already-correct MIME-association/default-app lookup see the host's
+    apps too. Deliberately NOT touching XDG_DATA_HOME the same way:
+    that's where PathConf/GLib.get_user_data_dir() stores this app's
+    own settings, and Flatpak's redirect of it to the isolated
+    ~/.var/app/<id>/data is the wanted behavior there (see
+    SystemApi._get_real_trash_base_dir) — only the *system* dirs list
+    needs widening. Must run before the first "from gi.repository
+    import Gio" anywhere, same as _ensure_gvfs_metadata_discoverable
+    above."""
+    if not os.environ.get("FLATPAK_ID"):
+        return
+    host_dirs = [
+        d
+        for d in ("/run/host/usr/local/share", "/run/host/usr/share")
+        if os.path.isdir(d)
+    ]
+    if not host_dirs:
+        return
+    existing = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    os.environ["XDG_DATA_DIRS"] = ":".join(host_dirs + [existing])
+
+
 _ensure_gvfs_metadata_discoverable()
+_ensure_host_apps_discoverable()
 
 from gi.repository import GLib
 

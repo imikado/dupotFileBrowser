@@ -155,15 +155,25 @@ class _Column(Gtk.Frame):
             and GLib.get_monotonic_time() - self._last_activated_at
             < _RECENT_ACTIVATION_WINDOW_US
         )
+        show = lambda: self._on_row_context_menu(self, row, x, y) or False
         if just_activated:
             # This row's own single-click navigation (opening a new
             # column) may still be settling — see the constants above.
-            GLib.timeout_add(
-                _CONTEXT_MENU_SETTLE_DELAY_MS,
-                lambda: self._on_row_context_menu(self, row, x, y) or False,
-            )
+            GLib.timeout_add(_CONTEXT_MENU_SETTLE_DELAY_MS, show)
         else:
-            self._on_row_context_menu(self, row, x, y)
+            # Never build the new popover synchronously from inside this
+            # gesture's own "pressed" handling (see popup_deferred: "...or
+            # the right-click gesture itself"). A previous context menu
+            # can still be open — same row re-right-clicked, or a stray
+            # click elsewhere reopening one — and its autohide-driven
+            # dismissal runs as part of delivering *this* click; building
+            # a new Gtk.Popover in that same call stack, while the old
+            # one's grab teardown is mid-flight, corrupted GTK's active-
+            # state accounting for it ("Gtk-WARNING: Broken accounting of
+            # active state for widget", seen in the Flatpak build).
+            # PRIORITY_HIGH_IDLE for the same reason show_context_menu's
+            # own popup_deferred call uses it.
+            GLib.idle_add(show, priority=GLib.PRIORITY_HIGH_IDLE)
 
     def select_path(self, path: str):
         row = self._list_box.get_first_child()
