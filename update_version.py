@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Sync app_window.py's APP_VERSION with appdata.xml's version of record.
+"""Sync app_window.py's APP_VERSION with appdata.xml's version of record,
+and optionally cut the release for it.
 
 appdata.xml (export/flatpak/org.dupot.filebrowser.appdata.xml) is what
 Flatpak/appstream actually show the user, and each release() bump belongs
@@ -10,11 +11,19 @@ already drifted from appdata.xml once. This script closes that loop:
 read the first (= latest) <release version="..."> entry and write it
 into APP_VERSION, instead of editing both by hand.
 
-Usage: ./update_version.py
+Usage:
+    ./update_version.py             # sync APP_VERSION only
+    ./update_version.py --release   # sync, then tag the current commit
+                                     # with that version and push the tag
+                                     # to origin (the release itself — no
+                                     # separate GitHub Release step, this
+                                     # env has no `gh`)
 """
 
+import argparse
 import pathlib
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
@@ -55,13 +64,48 @@ def set_app_version(app_window_path: pathlib.Path, version: str) -> str | None:
     return previous
 
 
+def _git(*args: str) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=ROOT_DIR, capture_output=True, text=True, check=True
+    )
+    return result.stdout.strip()
+
+
+def create_release(version: str) -> None:
+    """Tags the current commit with `version` (bare, e.g. "1.0.12" — same
+    convention as the existing "1.0.0" tag, no "v" prefix) and pushes the
+    tag to origin."""
+    if _git("status", "--porcelain"):
+        raise SystemExit(
+            "Working tree has uncommitted changes — commit them (including "
+            "any APP_VERSION sync above) before tagging a release."
+        )
+    if _git("tag", "-l", version):
+        raise SystemExit(f"Tag {version} already exists — nothing to do.")
+    _git("tag", "-a", version, "-m", f"Release {version}")
+    _git("push", "origin", version)
+    print(f"Tagged and pushed release {version}")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Also tag the current commit with the version and push the tag to origin.",
+    )
+    args = parser.parse_args()
+
     version = get_latest_version(APPDATA_PATH)
     previous = set_app_version(APP_WINDOW_PATH, version)
     if previous is None:
         print(f"APP_VERSION already up to date ({version})")
     else:
         print(f"APP_VERSION: {previous} -> {version}")
+
+    if args.release:
+        create_release(version)
+
     return 0
 
 

@@ -199,14 +199,40 @@ def _show_permissions_error(root):
     dialog.present(root)
 
 
-def _add_open_with_page(dialog: Adw.PreferencesDialog, root, system_api, path: str):
-    content_type = system_api.get_content_type(path)
-    app_infos, default_app, default_index = get_app_choices(content_type)
+def _add_open_with_page_flatpak(group: Adw.PreferencesGroup, dialog, system_api, path: str):
+    row = Adw.ActionRow()
+    row.set_title(_("Open with"))
+    row.set_subtitle(_("Choose an application to open this file"))
+    button = Gtk.Button(label=_("Choose…"))
+    button.set_valign(Gtk.Align.CENTER)
 
+    def _choose(_b):
+        system_api.open_with_chooser(path)
+        dialog.close()
+
+    button.connect("clicked", _choose)
+    row.add_suffix(button)
+    row.set_activatable_widget(button)
+    group.add(row)
+
+
+def _add_open_with_page(dialog: Adw.PreferencesDialog, root, system_api, path: str):
     page = Adw.PreferencesPage(title=_("Open With"), icon_name="document-open-symbolic")
     dialog.add(page)
     group = Adw.PreferencesGroup()
     page.add(group)
+
+    if system_api.is_running_flatpak():
+        # See open_with_popup.show_open_with_popup / SystemApi.open_with_chooser:
+        # GIO can neither list nor set host apps from inside the sandbox, so
+        # the dropdown/default-application/set-default rows below would all
+        # be empty or meaningless here — hand off to the portal's own native
+        # chooser instead, same as the right-click "Open With…" entry.
+        _add_open_with_page_flatpak(group, dialog, system_api, path)
+        return
+
+    content_type = system_api.get_content_type(path)
+    app_infos, default_app, default_index = get_app_choices(content_type)
 
     default_row = Adw.ActionRow()
     default_row.set_title(_("Default application"))
