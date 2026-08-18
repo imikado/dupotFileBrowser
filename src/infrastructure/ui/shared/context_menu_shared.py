@@ -5,7 +5,7 @@ gi.require_version("Gdk", "4.0")
 
 from gi.repository import Gdk, GLib, Gtk
 
-from infrastructure.ui.shared.popup_shared import close_then_run, popup_deferred
+from infrastructure.ui.shared.popup_shared import popup_deferred, run_then_close
 
 # Generous per-row padding so the *entire* row is clickable, not just the
 # label text — a tight hit box is what made an imprecise click land on
@@ -71,11 +71,9 @@ def show_context_menu(parent_widget, x: float, y: float, item_list: list[Context
         # once past the popover's edge, to autohide (closes, no action).
         btn.set_hexpand(True)
 
-        # See close_then_run: on_click often opens its own follow-up
-        # popup (Add Color, Open With…), so this button must not
-        # popdown()/run it synchronously from inside its own "clicked"
-        # handler.
-        btn.connect("clicked", lambda _b: close_then_run(popover, item.on_click))
+        # See run_then_close: item.on_click runs immediately, before
+        # this popover closes, so it's never dropped by a close race.
+        btn.connect("clicked", lambda _b: run_then_close(popover, item.on_click))
         return btn
 
     for item in item_list:

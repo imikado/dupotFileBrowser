@@ -1,41 +1,38 @@
 from gi.repository import GLib
 
 
-def close_then_run(popover, action) -> None:
-    """Pops `popover` down and calls `action` once it has actually
-    closed. Never call popover.popdown() synchronously from
-    inside one of its own buttons' "clicked" handler: GTK is still
-    mid-way through press/release bookkeeping for that button, and
-    tearing the popover out of the widget tree right then corrupts it
-    — surfaces as "Gtk-WARNING: Broken accounting of active state for
-    widget" (seen in the Flatpak build) and can leave `action` never
-    called, i.e. the click silently does nothing. Deferring one tick
-    lets the click event finish unwinding before touching the tree.
+def run_then_close(popover, action) -> None:
+    """Runs `action` right now — synchronously, before `popover` closes
+    — then pops `popover` down on the next idle iteration.
 
-    `action` then runs on the popover's real "closed" signal, not just
-    after popdown() — a follow-up popup opened from `action` races the
-    close animation/pointer-grab teardown otherwise (see popup_deferred).
-    But "closed" isn't guaranteed to fire (e.g. popdown() interrupting
-    the popover's own still-in-flight *opening* transition), so a short
-    timeout runs `action` anyway if "closed" doesn't show up — whichever
-    fires first wins, the other is a no-op."""
+    This used to run the other way around (close first, run `action`
+    once "closed" fired or a timeout elapsed), to avoid opening a
+    follow-up popup while the old grab hadn't been released yet. In
+    practice that ordering was the less reliable one: waiting on
+    "closed" (which isn't always emitted — see popup_deferred) or a
+    fixed timeout is itself a race, and it was still possible for the
+    click to visibly close the menu without `action` ever running —
+    exactly the "right-click menu opens, but clicking an item does
+    nothing" symptom (seen intermittently in the Flatpak build).
+    Running `action` first removes that race entirely: it always fires,
+    synchronously, in direct response to the click.
 
-    def _start_close() -> bool:
-        ran = False
+    A follow-up popup opened by `action` (Add Color, Open With…) is
+    safe to open here, with `popover` still technically open: every
+    such popup already goes through popup_deferred, which defers its
+    own popup() to the next *high-priority* idle turn. popdown() below
+    is queued at plain (lower) idle priority, so the follow-up popup's
+    popup() runs first and takes the pointer grab — GTK then closes
+    `popover` on its own as a side effect of losing that grab, and this
+    popdown() call just confirms it.
 
-        def _run_once(*_args) -> bool:
-            nonlocal ran
-            if not ran:
-                ran = True
-                action()
-            return False
-
-        popover.connect("closed", _run_once)
-        popover.popdown()
-        GLib.timeout_add(200, _run_once)
-        return False
-
-    GLib.idle_add(_start_close)
+    popdown() is deferred to idle rather than called synchronously here
+    because doing it synchronously from inside this very button's own
+    "clicked" handler corrupts GTK's press/release bookkeeping for that
+    button — "Gtk-WARNING: Broken accounting of active state for
+    widget" (also seen in the Flatpak build)."""
+    action()
+    GLib.idle_add(popover.popdown)
 
 
 def popup_deferred(popover) -> bool:
