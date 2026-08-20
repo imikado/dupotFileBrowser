@@ -423,6 +423,12 @@ class PathPage(Gtk.Box):
         )
         item_list.append(
             ContextMenuItem(
+                _("Copy Path"),
+                lambda: self._copy_path_to_clipboard(entry.path),
+            )
+        )
+        item_list.append(
+            ContextMenuItem(
                 _("Rename"),
                 lambda: show_rename_dialog(
                     row.get_root(),
@@ -546,6 +552,16 @@ class PathPage(Gtk.Box):
         else:
             self._last_copied_path = path
             self._on_file_copied(name or path, path)
+
+    def _copy_path_to_clipboard(self, path: str):
+        """Puts the entry's absolute path on the clipboard as plain text
+        (unlike _copy_to_clipboard, which puts the file itself there for
+        Paste in a file manager)."""
+        self.get_clipboard().set_content(
+            Gdk.ContentProvider.new_for_bytes(
+                "text/plain;charset=utf-8", GLib.Bytes.new(path.encode("utf-8"))
+            )
+        )
 
     def _add_to_favorites(self, label: str, path: str):
         """Adds {label, path} to UserSettingsEntity.favorite_list and
