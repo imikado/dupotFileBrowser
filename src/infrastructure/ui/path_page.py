@@ -238,6 +238,14 @@ class PathPage(Gtk.Box):
         for column in self._columns:
             self._set_column_entries(column, column.path)
 
+    def refresh_hidden_files(self):
+        """Reloads every open column in place after the "Show hidden
+        files" preference changes, same code path as a dark/light style
+        flip (_on_style_dark_changed) since both just need entries
+        re-fetched under the new UserSettingsEntity state."""
+        for column in self._columns:
+            self._set_column_entries(column, column.path)
+
     def load_path(self, path: str):
         """Reset the whole view to a single column showing `path`."""
         self._reset_columns()
@@ -321,7 +329,7 @@ class PathPage(Gtk.Box):
         self._columns_box.append(column)
 
     def _set_column_entries(self, column: _Column, path: str):
-        entry_list = self._list_directory_uc.get_entry_list(path)
+        entry_list = self._list_directory_uc.get_entry_list(path,UserSettingsEntity().should_display_hidden())
         # Files: one batched read of the parent's .dupotFileBrowser
         # sidecar. Folders: each one owns its color on itself (Nemo
         # convention — see SystemApi.get_folder_color), so it's one query

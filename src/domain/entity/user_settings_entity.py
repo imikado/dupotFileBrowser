@@ -26,6 +26,7 @@ class UserSettingsEntity:
     FIELD_FAVORITE_PATH = "path"
     FIELD_WINDOW_WIDTH = "windowWidth"
     FIELD_WINDOW_HEIGHT = "windowHeight"
+    FIELD_DISPLAY_HIDDEN = "displayHidden"
 
     _instance: "UserSettingsEntity | None" = None
 
@@ -38,6 +39,7 @@ class UserSettingsEntity:
     # Matches MainWindow's previous hardcoded set_default_size(1000, 700).
     DEFAULT_WINDOW_WIDTH = 1000
     DEFAULT_WINDOW_HEIGHT = 700
+    DEFAULT_DISPLAY_HIDDEN=False
 
     version: int = DEFAULT_VERSION
     theme: str = DEFAULT_THEME
@@ -45,6 +47,7 @@ class UserSettingsEntity:
     use_system_icon_theme: bool = DEFAULT_USE_SYSTEM_ICON_THEME
     window_width: int = DEFAULT_WINDOW_WIDTH
     window_height: int = DEFAULT_WINDOW_HEIGHT
+    display_hidden_files: bool= DEFAULT_DISPLAY_HIDDEN
     # Each item is {"label": <dir name>, "path": <absolute path>}.
     favorite_list: list[dict]
 
@@ -70,6 +73,7 @@ class UserSettingsEntity:
         self.use_system_icon_theme = self.DEFAULT_USE_SYSTEM_ICON_THEME
         self.window_width = self.DEFAULT_WINDOW_WIDTH
         self.window_height = self.DEFAULT_WINDOW_HEIGHT
+        self.display_hidden_files= self.DEFAULT_DISPLAY_HIDDEN
         self.favorite_list = []
 
     def load(self, raw_obj: object) -> None:
@@ -81,6 +85,8 @@ class UserSettingsEntity:
         )
         self.window_width = raw_obj.get(self.FIELD_WINDOW_WIDTH, self.DEFAULT_WINDOW_WIDTH)
         self.window_height = raw_obj.get(self.FIELD_WINDOW_HEIGHT, self.DEFAULT_WINDOW_HEIGHT)
+        self.display_hidden_files = raw_obj.get(self.FIELD_DISPLAY_HIDDEN, self.DEFAULT_DISPLAY_HIDDEN)
+
         self.favorite_list = raw_obj.get(self.FIELD_FAVORITE_LIST, [])
 
     def get_json_string(self) -> str:
@@ -93,6 +99,7 @@ class UserSettingsEntity:
                 self.FIELD_WINDOW_WIDTH: self.window_width,
                 self.FIELD_WINDOW_HEIGHT: self.window_height,
                 self.FIELD_FAVORITE_LIST: self.favorite_list,
+                self.FIELD_DISPLAY_HIDDEN: self.display_hidden_files
             }
         )
 
@@ -148,3 +155,9 @@ class UserSettingsEntity:
             self.LANGUAGE_IT: "it",
         }
         return language_codes.get(self.language, self.LANGUAGE_EN_CODE)
+
+    def should_display_hidden(self)->bool:
+        return self.display_hidden_files
+
+    def set_should_display_hidden(self,display_hidden:bool):
+        self.display_hidden_files=display_hidden

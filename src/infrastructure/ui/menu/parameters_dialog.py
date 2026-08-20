@@ -64,6 +64,15 @@ class ParametersDialog(Adw.PreferencesDialog):
         self._system_icon_row.connect("notify::active", lambda *_: self._on_change())
         appearance_group.add(self._system_icon_row)
 
+        self._hidden_files_row = Adw.SwitchRow()
+        self._hidden_files_row.set_title(_("Show hidden files"))
+        self._hidden_files_row.set_subtitle(
+            _("Display files and folders whose name starts with a dot.")
+        )
+        self._hidden_files_row.set_active(self._settings.should_display_hidden())
+        self._hidden_files_row.connect("notify::active", lambda *_: self._on_change())
+        appearance_group.add(self._hidden_files_row)
+
         save_group = Adw.PreferencesGroup()
         page.add(save_group)
 
@@ -93,10 +102,14 @@ class ParametersDialog(Adw.PreferencesDialog):
         icon_theme_changed = new_use_system_icon_theme != self._settings.use_system_icon_theme
         self._settings.use_system_icon_theme = new_use_system_icon_theme
 
+        new_display_hidden = self._hidden_files_row.get_active()
+        hidden_files_changed = new_display_hidden != self._settings.should_display_hidden()
+        self._settings.set_should_display_hidden(new_display_hidden)
+
         self._user_settings_api.save()
 
         if self._on_saved:
-            self._on_saved()
+            self._on_saved(hidden_files_changed)
 
         self.close()
 

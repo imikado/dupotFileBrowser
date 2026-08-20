@@ -9,11 +9,11 @@ class ListDirectoryUc:
     def __init__(self, system_api: SystemApiContract):
         self._system_api = system_api
 
-    def get_entry_list(self, path: str) -> list[FileEntryEntity]:
+    def get_entry_list(self, path: str, display_hidden:bool) -> list[FileEntryEntity]:
         entry_list = [
             entry
             for entry in self._system_api.list_dir(path)
-            if not entry.name.startswith(".")
+            if display_hidden or not entry.name.startswith(".")
         ]
-        entry_list.sort(key=lambda entry: entry.name)
+        entry_list.sort(key=lambda entry: (not entry.is_dir,entry.name.startswith("."), entry.name.lower()))
         return entry_list

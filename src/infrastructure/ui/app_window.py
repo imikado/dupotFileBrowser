@@ -495,8 +495,10 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_menu_parameters(self, _action, _param):
         ParametersDialog(self._on_settings_saved).present(self)
 
-    def _on_settings_saved(self):
+    def _on_settings_saved(self, hidden_files_changed=False):
         self._apply_theme()
+        if hidden_files_changed:
+            self._path_page.refresh_hidden_files()
 
     def _on_menu_about(self, _action, _param):
         about = Adw.AboutDialog.new()
