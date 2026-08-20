@@ -429,6 +429,12 @@ class PathPage(Gtk.Box):
         )
         item_list.append(
             ContextMenuItem(
+                _("Open Terminal Here"),
+                lambda: self._open_terminal(entry.path, row.get_root()),
+            )
+        )
+        item_list.append(
+            ContextMenuItem(
                 _("Rename"),
                 lambda: show_rename_dialog(
                     row.get_root(),
@@ -552,6 +558,18 @@ class PathPage(Gtk.Box):
         else:
             self._last_copied_path = path
             self._on_file_copied(name or path, path)
+
+    def _open_terminal(self, path: str, root):
+        if not self._system_api.open_terminal(path):
+            self._show_no_terminal_error(root)
+
+    def _show_no_terminal_error(self, root):
+        dialog = Adw.AlertDialog(
+            heading=_("No terminal found"),
+            body=_("No terminal emulator could be found on this system."),
+        )
+        dialog.add_response("ok", _("OK"))
+        dialog.present(root)
 
     def _copy_path_to_clipboard(self, path: str):
         """Puts the entry's absolute path on the clipboard as plain text

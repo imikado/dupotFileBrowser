@@ -4,8 +4,10 @@ import json
 import os
 import pwd
 import re
+import shlex
 import shutil
 import stat
+import subprocess
 import urllib.parse
 from datetime import datetime
 
@@ -50,6 +52,65 @@ _NEMO_THEME_TO_COLOR = {theme: hex_color for hex_color, theme in NEMO_FOLDER_COL
 _NEMO_ICON_SIZE = 48
 _NEMO_CUSTOM_ICON_ATTRIBUTE = "metadata::custom-icon"
 _NEMO_ICON_URI_RE = re.compile(r"/(Mint-Y(?:-[A-Za-z]+)?)/places/\d+(?:@2x)?/folder[^/]*\.png$")
+
+# Probed in order by open_terminal until one is found on the host — there
+# is no portal/AppInfo API for "the user's terminal" the way OpenURI covers
+# "the user's file handler" (see open_path). xdg-terminal-exec comes first:
+# it's the freedesktop spec's own dispatcher to whatever terminal the
+# desktop environment is actually configured to use, present on any
+# reasonably current distro; the rest is a plain fallback list of specific
+# emulators for systems that don't have it.
+_TERMINAL_CANDIDATE_LIST = [
+    "xdg-terminal-exec",
+    "x-terminal-emulator",
+    "gnome-terminal",
+    "ptyxis",
+    "kgx",
+    "konsole",
+    "xfce4-terminal",
+    "mate-terminal",
+    "tilix",
+    "terminator",
+    "alacritty",
+    "kitty",
+    "lxterminal",
+    "deepin-terminal",
+    "xterm",
+]
+
+# binary -> extra argv (after the binary itself) to make it start in a
+# given directory, with "{directory}" filled in by _terminal_argv. Only
+# covers emulators whose flag is actually documented; anything missing
+# here (xdg-terminal-exec, xterm) falls back to a plain `cd && exec` in
+# _terminal_argv, which for those two is not a guess but the correct way
+# to do it — see open_terminal's docstring for why that fallback would be
+# wrong for everything listed below.
+#
+# x-terminal-emulator is deliberately NOT here despite resolving to a
+# real emulator: on Debian/Ubuntu it's an update-alternatives symlink to
+# a *wrapper script* that only understands classic xterm-style options
+# (-e, -T, -geometry...) and silently drops anything else — confirmed
+# empirically: --working-directory reached the real gnome-terminal
+# unchanged as a plain argv element the wrapper doesn't recognize, and
+# gnome-terminal itself just as silently ignores an option it doesn't
+# know, so the new window opened wherever gnome-terminal's already-
+# running background server happened to start rather than `directory`.
+# It gets the same "-e sh -c" treatment as xterm/xdg-terminal-exec in
+# _terminal_argv instead — the one interface Debian Policy §11.8.3
+# guarantees every x-terminal-emulator alternative implements.
+_TERMINAL_FLAG_MAP = {
+    "gnome-terminal": ["--working-directory={directory}"],
+    "ptyxis": ["--working-directory={directory}"],
+    "kgx": ["--working-directory={directory}"],
+    "konsole": ["--workdir", "{directory}"],
+    "xfce4-terminal": ["--working-directory={directory}"],
+    "mate-terminal": ["--working-directory={directory}"],
+    "tilix": ["--working-directory={directory}"],
+    "terminator": ["--working-directory={directory}"],
+    "alacritty": ["--working-directory", "{directory}"],
+    "kitty": ["--directory", "{directory}"],
+    "lxterminal": ["--working-directory={directory}"],
+}
 
 
 class SystemApi(SystemApiContract):
@@ -153,6 +214,96 @@ class SystemApi(SystemApiContract):
             )
             return True
         except GLib.Error:
+            return False
+
+    def open_terminal(self, path: str) -> bool:
+        """Opens a terminal emulator in `path` (its parent directory, if
+        `path` is a file) — mirrors "Open Terminal Here" in Nemo/
+        Nautilus/Files. Under Flatpak the terminal has to be launched on
+        the host via flatpak-spawn (--talk-name=org.freedesktop.Flatpak,
+        see org.dupot.filebrowser.yml) since none of _TERMINAL_CANDIDATE_
+        LIST is inside the org.gnome.Platform runtime; natively it's run
+        directly.
+
+        Each candidate gets its own explicit "open in this directory"
+        flag (see _terminal_argv) rather than a plain `cd DIR && exec
+        binary` — most of these (gnome-terminal, xfce4-terminal,
+        konsole...) are single-instance apps whose CLI invocation is just
+        a client that asks an already-running background server to open
+        a new window/tab; the server does that using *its own* working
+        directory, not the short-lived client's, so `cd`-ing before exec
+        silently opens the new terminal wherever the server happened to
+        start (confirmed empirically: a plain exec'd gnome-terminal
+        landed in the server's launch directory, not the one requested
+        here)."""
+        directory = path if self.is_dir(path) else self.get_parent_dir(path)
+        if not self.is_dir(directory):
+            return False
+
+        for binary in _TERMINAL_CANDIDATE_LIST:
+            if not self._host_command_exists(binary):
+                continue
+            try:
+                Gio.Subprocess.new(
+                    self._host_argv(self._terminal_argv(binary, directory)),
+                    Gio.SubprocessFlags.NONE,
+                )
+                return True
+            except GLib.Error:
+                continue
+        return False
+
+    def _terminal_argv(self, binary: str, directory: str) -> list[str]:
+        """Full argv to launch `binary` starting in `directory`, using
+        that emulator's own flag for it where one is documented
+        (_TERMINAL_FLAG_MAP).
+
+        x-terminal-emulator instead gets the classic xterm `-e COMMAND`
+        form (see _TERMINAL_FLAG_MAP's comment on why): the command run
+        is its own `cd DIR && exec $SHELL`, so it's the freshly spawned
+        shell doing the cd, not this wrapper's own — sidesteps needing
+        the wrapper to understand any flag at all.
+
+        Every other unlisted binary (xdg-terminal-exec, xterm,
+        deepin-terminal...) gets a plain `cd DIR && exec binary`: none of
+        these is a D-Bus-activated single-instance app reusing some
+        already-running server's cwd (xdg-terminal-exec execs the
+        resolved terminal directly per its own spec; xterm has no server
+        to reuse), so inheriting cwd through the exec genuinely lands the
+        new terminal in `directory` — and for xterm it's the only option
+        anyway, since it has no such flag at all."""
+        flag_args = _TERMINAL_FLAG_MAP.get(binary)
+        if flag_args is not None:
+            return [binary] + [arg.format(directory=directory) for arg in flag_args]
+        if binary == "x-terminal-emulator":
+            inner_shell_command = f"cd {shlex.quote(directory)} && exec ${{SHELL:-/bin/sh}}"
+            return [binary, "-e", "sh", "-c", inner_shell_command]
+        shell_command = f"cd {shlex.quote(directory)} && exec {shlex.quote(binary)}"
+        return ["sh", "-c", shell_command]
+
+    def _host_argv(self, argv: list[str]) -> list[str]:
+        """Prefixes `argv` with `flatpak-spawn --host` when sandboxed, so
+        it runs as a real host process (a terminal window has no business
+        living inside our sandbox) — a no-op outside Flatpak."""
+        return (["flatpak-spawn", "--host"] if self.is_running_flatpak() else []) + argv
+
+    def _host_command_exists(self, binary: str) -> bool:
+        """Whether `binary` resolves on the host $PATH. Checked with a
+        quick, synchronous `command -v` (not a plain PATH scan in-process
+        — under Flatpak our own $PATH is the sandboxed runtime's, which
+        none of _TERMINAL_CANDIDATE_LIST lives on) rather than just
+        trying to launch each candidate and seeing what fails: a failed
+        exec happens *after* Gio.Subprocess.new returns (fire-and-forget,
+        see open_terminal), so there'd be nothing to catch here."""
+        try:
+            result = subprocess.run(
+                self._host_argv(["sh", "-c", f"command -v {shlex.quote(binary)}"]),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
+            return result.returncode == 0
+        except (OSError, subprocess.SubprocessError):
             return False
 
     def get_uri(self, path: str) -> str:
