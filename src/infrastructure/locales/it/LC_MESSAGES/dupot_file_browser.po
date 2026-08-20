@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-16 09:34+0200\n"
+"POT-Creation-Date: 2026-08-20 15:08+0200\n"
 "PO-Revision-Date: 2026-08-16 09:34+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,35 +17,107 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/infrastructure/ui/app_window.py:25
-#: src/infrastructure/ui/app_window.py:153
+#: src/infrastructure/api/system_api.py:350
+#, python-brace-format
+msgid "{count} items"
+msgstr "{count} elementi"
+
+#: src/infrastructure/ui/app_window.py:29
+#: src/infrastructure/ui/app_window.py:505
 msgid "File browser"
 msgstr "Esplora file"
 
-#: src/infrastructure/ui/app_window.py:40
+#: src/infrastructure/ui/app_window.py:54
 msgid "Parent folder"
 msgstr "Cartella superiore"
 
-#: src/infrastructure/ui/app_window.py:55
+#: src/infrastructure/ui/app_window.py:61
+msgid "Type a path and press Enter to go there"
+msgstr "Digita un percorso e premi Invio per accedervi"
+
+#: src/infrastructure/ui/app_window.py:89
 #: src/infrastructure/ui/menu/parameters_dialog.py:19
 msgid "Parameters"
 msgstr "Impostazioni"
 
-#: src/infrastructure/ui/app_window.py:56
+#: src/infrastructure/ui/app_window.py:90
 msgid "About"
 msgstr "Informazioni"
 
-#: src/infrastructure/ui/app_window.py:101
+#: src/infrastructure/ui/app_window.py:193
 msgid "Home"
 msgstr "Home"
 
-#: src/infrastructure/ui/app_window.py:141
-msgid "Switch to light mode"
-msgstr "Passa alla modalità chiara"
+#: src/infrastructure/ui/app_window.py:196
+#: src/infrastructure/ui/app_window.py:434
+#: src/infrastructure/ui/trash_page.py:32
+msgid "Trash"
+msgstr "Cestino"
 
-#: src/infrastructure/ui/app_window.py:141
-msgid "Switch to dark mode"
-msgstr "Passa alla modalità scura"
+#: src/infrastructure/ui/app_window.py:269
+msgid "Move file"
+msgstr "Sposta file"
+
+#: src/infrastructure/ui/app_window.py:269
+msgid "Paste the file"
+msgstr "Incolla il file"
+
+#: src/infrastructure/ui/app_window.py:294
+#, python-brace-format
+msgid "{count} pending"
+msgstr "{count} in sospeso"
+
+#: src/infrastructure/ui/app_window.py:325
+msgid "File already exists"
+msgstr "Il file esiste già"
+
+#: src/infrastructure/ui/app_window.py:327
+#, python-brace-format
+msgid "\"{name}\" already exists in this folder. Choose a new name."
+msgstr "\"{name}\" esiste già in questa cartella. Scegli un nuovo nome."
+
+#: src/infrastructure/ui/app_window.py:331
+#: src/infrastructure/ui/shared/confirm_dialog.py:14
+#: src/infrastructure/ui/shared/open_with_popup.py:90
+#: src/infrastructure/ui/shared/rename_dialog.py:33
+msgid "Cancel"
+msgstr "Annulla"
+
+#: src/infrastructure/ui/app_window.py:332
+msgid "Move"
+msgstr "Sposta"
+
+#: src/infrastructure/ui/app_window.py:332
+msgid "Paste"
+msgstr "Incolla"
+
+#: src/infrastructure/ui/app_window.py:409
+#, python-brace-format
+msgid "Could not move \"{name}\" to this folder."
+msgstr "Impossibile spostare \"{name}\" in questa cartella."
+
+#: src/infrastructure/ui/app_window.py:411
+#, python-brace-format
+msgid "Could not copy \"{name}\" to this folder."
+msgstr "Impossibile copiare \"{name}\" in questa cartella."
+
+#: src/infrastructure/ui/app_window.py:415
+msgid "Move failed"
+msgstr "Spostamento non riuscito"
+
+#: src/infrastructure/ui/app_window.py:415
+msgid "Copy failed"
+msgstr "Copia non riuscita"
+
+#: src/infrastructure/ui/app_window.py:417
+#: src/infrastructure/ui/path_page.py:525
+#: src/infrastructure/ui/path_page.py:571
+#: src/infrastructure/ui/shared/properties_dialog.py:198
+#: src/infrastructure/ui/shared/properties_dialog.py:328
+#: src/infrastructure/ui/shared/rename_dialog.py:77
+#: src/infrastructure/ui/trash_page.py:185
+msgid "OK"
+msgstr "OK"
 
 #: src/infrastructure/ui/menu/parameters_dialog.py:29
 msgid "Appearance"
@@ -59,13 +131,344 @@ msgstr "Tema"
 msgid "Language"
 msgstr "Lingua"
 
-#: src/infrastructure/ui/menu/parameters_dialog.py:57
+#: src/infrastructure/ui/menu/parameters_dialog.py:55
+msgid "Use system icon theme"
+msgstr "Usa il tema delle icone di sistema"
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:58
+msgid ""
+"Show the same file icons as your file manager (Nemo, Nautilus...). Falls "
+"back to the built-in icons for any file type your theme doesn't cover."
+msgstr "Mostra le stesse icone dei file del tuo gestore file (Nemo, Nautilus...). Utilizza le icone integrate per i tipi di file non coperti dal tuo tema."
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:68
+msgid "Show hidden files"
+msgstr "Mostra i file nascosti"
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:70
+msgid "Display files and folders whose name starts with a dot."
+msgstr "Mostra i file e le cartelle il cui nome inizia con un punto."
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:79
 msgid "Save"
 msgstr "Salva"
 
-#: src/infrastructure/ui/path_page.py:38
+#: src/infrastructure/ui/path_page.py:85
 msgid "Empty folder"
 msgstr "Cartella vuota"
+
+#: src/infrastructure/ui/path_page.py:394
+#: src/infrastructure/ui/shared/open_with_popup.py:87
+#: src/infrastructure/ui/shared/properties_dialog.py:284
+msgid "Open"
+msgstr "Apri"
+
+#: src/infrastructure/ui/path_page.py:399
+msgid "Open With…"
+msgstr "Apri con…"
+
+#: src/infrastructure/ui/path_page.py:407
+msgid "Add to favorites"
+msgstr "Aggiungi ai preferiti"
+
+#: src/infrastructure/ui/path_page.py:414
+msgid "Copy"
+msgstr "Copia"
+
+#: src/infrastructure/ui/path_page.py:420
+msgid "Cut"
+msgstr "Taglia"
+
+#: src/infrastructure/ui/path_page.py:426
+msgid "Copy Path"
+msgstr "Copia percorso"
+
+#: src/infrastructure/ui/path_page.py:432
+msgid "Open Terminal Here"
+msgstr "Apri terminale qui"
+
+#: src/infrastructure/ui/path_page.py:438
+#: src/infrastructure/ui/shared/rename_dialog.py:29
+#: src/infrastructure/ui/shared/rename_dialog.py:34
+msgid "Rename"
+msgstr "Rinomina"
+
+#: src/infrastructure/ui/path_page.py:450
+msgid "Add Color"
+msgstr "Aggiungi colore"
+
+#: src/infrastructure/ui/path_page.py:460
+msgid "Properties"
+msgstr "Proprietà"
+
+#: src/infrastructure/ui/path_page.py:468
+#: src/infrastructure/ui/path_page.py:473
+msgid "Move to Trash"
+msgstr "Sposta nel cestino"
+
+#: src/infrastructure/ui/path_page.py:471
+msgid "Move to Trash?"
+msgstr "Spostare nel cestino?"
+
+#: src/infrastructure/ui/path_page.py:472
+#, python-brace-format
+msgid "\"{name}\" will be moved to the Trash."
+msgstr "\"{name}\" verrà spostato nel cestino."
+
+#: src/infrastructure/ui/path_page.py:522
+msgid "Could not move to Trash"
+msgstr "Impossibile spostare nel cestino"
+
+#: src/infrastructure/ui/path_page.py:523
+#, python-brace-format
+msgid "\"{name}\" could not be moved to the Trash."
+msgstr "Impossibile spostare \"{name}\" nel cestino."
+
+#: src/infrastructure/ui/path_page.py:568
+msgid "No terminal found"
+msgstr "Nessun terminale trovato"
+
+#: src/infrastructure/ui/path_page.py:569
+msgid "No terminal emulator could be found on this system."
+msgstr "Non è stato possibile trovare alcun emulatore di terminale su questo sistema."
+
+#: src/infrastructure/ui/shared/color_picker_popup.py:113
+msgid "Remove Color"
+msgstr "Rimuovi colore"
+
+#: src/infrastructure/ui/shared/open_with_popup.py:77
+#: src/infrastructure/ui/shared/properties_dialog.py:242
+msgid "Other application…"
+msgstr "Altra applicazione…"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:40
+msgid "General"
+msgstr "Generale"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:44
+msgid "Name"
+msgstr "Nome"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:45
+msgid "Location"
+msgstr "Posizione"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:46
+msgid "Type"
+msgstr "Tipo"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:49
+msgid "Contains"
+msgstr "Contiene"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:49
+msgid "Size"
+msgstr "Dimensione"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:52
+msgid "Modified"
+msgstr "Modificato"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:74
+msgid "Permissions"
+msgstr "Permessi"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:79
+#: src/infrastructure/ui/shared/properties_dialog.py:112
+msgid "Owner"
+msgstr "Proprietario"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:80
+#: src/infrastructure/ui/shared/properties_dialog.py:112
+msgid "Group"
+msgstr "Gruppo"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:83
+#: src/infrastructure/ui/shared/properties_dialog.py:88
+msgid "Access"
+msgstr "Accesso"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:92
+msgid "Current"
+msgstr "Attuale"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:107
+msgid "Apply"
+msgstr "Applica"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:112
+msgid "Others"
+msgstr "Altri"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:113
+msgid "R"
+msgstr "R"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:113
+msgid "W"
+msgstr "W"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:113
+msgid "X"
+msgstr "X"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:141
+msgid "Apply changes"
+msgstr "Applica le modifiche"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:195
+msgid "Could not change permissions"
+msgstr "Impossibile modificare i permessi"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:196
+msgid "You may not own this file, or lack permission to change it."
+msgstr "Potresti non essere il proprietario di questo file o non avere il permesso di modificarlo."
+
+#: src/infrastructure/ui/shared/properties_dialog.py:204
+#: src/infrastructure/ui/shared/properties_dialog.py:246
+msgid "Open with"
+msgstr "Apri con"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:205
+msgid "Choose an application to open this file"
+msgstr "Scegli un'applicazione per aprire questo file"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:206
+msgid "Choose…"
+msgstr "Scegli…"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:220
+msgid "Open With"
+msgstr "Apri con"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:238
+msgid "Default application"
+msgstr "Applicazione predefinita"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:255
+msgid "Make default"
+msgstr "Imposta come predefinita"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:256
+msgid "Set as Default"
+msgstr "Imposta come predefinita"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:283
+msgid "Launch"
+msgstr "Avvia"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:298
+msgid "None"
+msgstr "Nessuna"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:325
+msgid "Could not change the default application"
+msgstr "Impossibile modificare l'applicazione predefinita"
+
+#: src/infrastructure/ui/shared/properties_dialog.py:326
+msgid ""
+"The system refused to register this application as the default for this file "
+"type."
+msgstr "Il sistema ha rifiutato di registrare questa applicazione come predefinita per questo tipo di file."
+
+#: src/infrastructure/ui/shared/rename_dialog.py:30
+#, python-brace-format
+msgid "Choose a new name for \"{name}\"."
+msgstr "Scegli un nuovo nome per \"{name}\"."
+
+#: src/infrastructure/ui/shared/rename_dialog.py:73
+#, python-brace-format
+msgid "Could not rename \"{name}\"."
+msgstr "Impossibile rinominare \"{name}\"."
+
+#: src/infrastructure/ui/shared/rename_dialog.py:76
+msgid "Rename failed"
+msgstr "Rinomina non riuscita"
+
+#: src/infrastructure/ui/shared/sidemenu_shared.py:139
+msgid "Remove from favorites"
+msgstr "Rimuovi dai preferiti"
+
+#: src/infrastructure/ui/trash_page.py:38
+#: src/infrastructure/ui/trash_page.py:171
+msgid "Empty Trash"
+msgstr "Svuota cestino"
+
+#: src/infrastructure/ui/trash_page.py:53
+msgid "Trash is empty"
+msgstr "Il cestino è vuoto"
+
+#: src/infrastructure/ui/trash_page.py:89
+#, python-brace-format
+msgid "Deleted {when}"
+msgstr "Eliminato il {when}"
+
+#: src/infrastructure/ui/trash_page.py:97
+msgid "Restore"
+msgstr "Ripristina"
+
+#: src/infrastructure/ui/trash_page.py:107
+#: src/infrastructure/ui/trash_page.py:151
+msgid "Delete Permanently"
+msgstr "Elimina definitivamente"
+
+#: src/infrastructure/ui/trash_page.py:122
+#: src/infrastructure/ui/trash_page.py:130
+#: src/infrastructure/ui/trash_page.py:138
+msgid "Could not restore"
+msgstr "Impossibile ripristinare"
+
+#: src/infrastructure/ui/trash_page.py:123
+#, python-brace-format
+msgid "\"{name}\" has no recorded original location."
+msgstr "\"{name}\" non ha una posizione originale registrata."
+
+#: src/infrastructure/ui/trash_page.py:131
+#, python-brace-format
+msgid ""
+"\"{name}\" already exists at its original location:\n"
+"{path}"
+msgstr "\"{name}\" esiste già nella sua posizione originale:\n{path}"
+
+#: src/infrastructure/ui/trash_page.py:139
+#, python-brace-format
+msgid "\"{name}\" could not be restored."
+msgstr "Impossibile ripristinare \"{name}\"."
+
+#: src/infrastructure/ui/trash_page.py:147
+msgid "Delete Permanently?"
+msgstr "Eliminare definitivamente?"
+
+#: src/infrastructure/ui/trash_page.py:149
+#, python-brace-format
+msgid "\"{name}\" will be permanently deleted. This cannot be undone."
+msgstr "\"{name}\" verrà eliminato definitivamente. Questa azione non può essere annullata."
+
+#: src/infrastructure/ui/trash_page.py:158
+msgid "Could not delete"
+msgstr "Impossibile eliminare"
+
+#: src/infrastructure/ui/trash_page.py:159
+#, python-brace-format
+msgid "\"{name}\" could not be permanently deleted."
+msgstr "Impossibile eliminare definitivamente \"{name}\"."
+
+#: src/infrastructure/ui/trash_page.py:169
+msgid "Empty Trash?"
+msgstr "Svuotare il cestino?"
+
+#: src/infrastructure/ui/trash_page.py:170
+msgid ""
+"All items in the Trash will be permanently deleted. This cannot be undone."
+msgstr "Tutti gli elementi nel cestino verranno eliminati definitivamente. Questa azione non può essere annullata."
+
+#: src/infrastructure/ui/trash_page.py:178
+msgid "Could not empty Trash"
+msgstr "Impossibile svuotare il cestino"
+
+#: src/infrastructure/ui/trash_page.py:179
+msgid "Some items could not be permanently deleted."
+msgstr "Non è stato possibile eliminare definitivamente alcuni elementi."
 
 msgid "dark"
 msgstr "Scuro"
@@ -84,3 +487,9 @@ msgstr "Francese"
 
 msgid "italian"
 msgstr "Italiano"
+
+#~ msgid "Switch to light mode"
+#~ msgstr "Passa alla modalità chiara"
+
+#~ msgid "Switch to dark mode"
+#~ msgstr "Passa alla modalità scura"

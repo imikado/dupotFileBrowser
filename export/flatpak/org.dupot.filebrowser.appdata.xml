@@ -53,6 +53,16 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release date="2026-08-20" version="1.0.16">
+      <description>
+        <ul>
+          <li>Add in parameter menu: toggle to display/hide hidden files</li>
+          <li>Add in context menu: copy path</li>
+          <li>Add in context menu: open terminal here</li>
+          <li>Add missing translations</li>
+        </ul>
+      </description>
+    </release>
     <release date="2026-08-18" version="1.0.15">
       <description>
         <ul>
