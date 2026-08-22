@@ -29,6 +29,7 @@ class UserSettingsEntity:
     FIELD_DISPLAY_HIDDEN = "displayHidden"
     FIELD_VIEW_MODE = "viewMode"
     FIELD_GRID_ICON_SIZE = "gridIconSize"
+    FIELD_SINGLE_CLICK_OPEN = "singleClickOpen"
 
     VIEW_MODE_COLUMNS = "columns"
     VIEW_MODE_GRID = "grid"
@@ -57,6 +58,12 @@ class UserSettingsEntity:
     # existing users already know; grid is opt-in.
     DEFAULT_VIEW_MODE = VIEW_MODE_COLUMNS
     DEFAULT_GRID_ICON_SIZE = 96
+    # Only read by GridPage/DetailsPage — PathPage's Miller columns keep
+    # their own fixed single-click-opens-folders convention regardless
+    # of this setting (see its class docstring). Off by default: matches
+    # the grid/details views' existing single-click-selects/double-
+    # click-opens behavior, so this setting is purely opt-in.
+    DEFAULT_SINGLE_CLICK_OPEN = False
 
     version: int = DEFAULT_VERSION
     theme: str = DEFAULT_THEME
@@ -67,6 +74,7 @@ class UserSettingsEntity:
     display_hidden_files: bool= DEFAULT_DISPLAY_HIDDEN
     view_mode: str = DEFAULT_VIEW_MODE
     grid_icon_size: int = DEFAULT_GRID_ICON_SIZE
+    single_click_open: bool = DEFAULT_SINGLE_CLICK_OPEN
     # Each item is {"label": <dir name>, "path": <absolute path>}.
     favorite_list: list[dict]
 
@@ -95,6 +103,7 @@ class UserSettingsEntity:
         self.display_hidden_files= self.DEFAULT_DISPLAY_HIDDEN
         self.view_mode = self.DEFAULT_VIEW_MODE
         self.grid_icon_size = self.DEFAULT_GRID_ICON_SIZE
+        self.single_click_open = self.DEFAULT_SINGLE_CLICK_OPEN
         self.favorite_list = []
 
     def load(self, raw_obj: object) -> None:
@@ -109,6 +118,9 @@ class UserSettingsEntity:
         self.display_hidden_files = raw_obj.get(self.FIELD_DISPLAY_HIDDEN, self.DEFAULT_DISPLAY_HIDDEN)
         self.view_mode = raw_obj.get(self.FIELD_VIEW_MODE, self.DEFAULT_VIEW_MODE)
         self.grid_icon_size = raw_obj.get(self.FIELD_GRID_ICON_SIZE, self.DEFAULT_GRID_ICON_SIZE)
+        self.single_click_open = raw_obj.get(
+            self.FIELD_SINGLE_CLICK_OPEN, self.DEFAULT_SINGLE_CLICK_OPEN
+        )
 
         self.favorite_list = raw_obj.get(self.FIELD_FAVORITE_LIST, [])
 
@@ -125,6 +137,7 @@ class UserSettingsEntity:
                 self.FIELD_DISPLAY_HIDDEN: self.display_hidden_files,
                 self.FIELD_VIEW_MODE: self.view_mode,
                 self.FIELD_GRID_ICON_SIZE: self.grid_icon_size,
+                self.FIELD_SINGLE_CLICK_OPEN: self.single_click_open,
             }
         )
 
@@ -201,3 +214,9 @@ class UserSettingsEntity:
 
     def set_grid_icon_size(self, size: int) -> None:
         self.grid_icon_size = max(self.MIN_GRID_ICON_SIZE, min(self.MAX_GRID_ICON_SIZE, size))
+
+    def should_open_on_single_click(self) -> bool:
+        return self.single_click_open
+
+    def set_should_open_on_single_click(self, single_click_open: bool) -> None:
+        self.single_click_open = single_click_open

@@ -73,6 +73,19 @@ class ParametersDialog(Adw.PreferencesDialog):
         self._hidden_files_row.connect("notify::active", lambda *_: self._on_change())
         appearance_group.add(self._hidden_files_row)
 
+        self._single_click_open_row = Adw.SwitchRow()
+        self._single_click_open_row.set_title(_("Open with a single click"))
+        self._single_click_open_row.set_subtitle(
+            _(
+                "In Grid and Details view, open a file or folder with a "
+                "single click instead of a double click. Doesn't affect "
+                "Columns view."
+            )
+        )
+        self._single_click_open_row.set_active(self._settings.should_open_on_single_click())
+        self._single_click_open_row.connect("notify::active", lambda *_: self._on_change())
+        appearance_group.add(self._single_click_open_row)
+
         save_group = Adw.PreferencesGroup()
         page.add(save_group)
 
@@ -106,10 +119,16 @@ class ParametersDialog(Adw.PreferencesDialog):
         hidden_files_changed = new_display_hidden != self._settings.should_display_hidden()
         self._settings.set_should_display_hidden(new_display_hidden)
 
+        new_single_click_open = self._single_click_open_row.get_active()
+        single_click_open_changed = (
+            new_single_click_open != self._settings.should_open_on_single_click()
+        )
+        self._settings.set_should_open_on_single_click(new_single_click_open)
+
         self._user_settings_api.save()
 
         if self._on_saved:
-            self._on_saved(hidden_files_changed)
+            self._on_saved(hidden_files_changed, single_click_open_changed)
 
         self.close()
 

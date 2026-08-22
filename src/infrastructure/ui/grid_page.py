@@ -37,10 +37,13 @@ class GridPage(Gtk.Box):
     column view.
 
     Both single-click-selects/double-click-opens for every entry
-    (Gtk.FlowBox's own activation), not PathPage's single-click-opens-
-    folders convention — that asymmetry exists there specifically to
-    make Miller-column chains feel fluid, which doesn't apply to a plain
-    grid replacing itself in place."""
+    (Gtk.FlowBox's own activation) by default, not PathPage's single-
+    click-opens-folders convention — that asymmetry exists there
+    specifically to make Miller-column chains feel fluid, which doesn't
+    apply to a plain grid replacing itself in place. Parameters >
+    "Open with a single click" (UserSettingsEntity.single_click_open)
+    can flip this to single-click-opens instead — see
+    apply_click_to_open_setting."""
 
     def __init__(
         self,
@@ -74,8 +77,12 @@ class GridPage(Gtk.Box):
         self._flow_box.set_margin_end(12)
         self._flow_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # False (the default) is what gives us "single click selects,
-        # double click/Enter activates" — see the class docstring.
-        self._flow_box.set_activate_on_single_click(False)
+        # double click/Enter activates" — see the class docstring. True
+        # (Parameters > "Open with a single click") instead activates
+        # (and, per GtkFlowBox, also selects) on the first click.
+        self._flow_box.set_activate_on_single_click(
+            UserSettingsEntity().should_open_on_single_click()
+        )
         self._flow_box.connect("child-activated", self._on_child_activated)
 
         scroll = Gtk.ScrolledWindow()
@@ -120,6 +127,14 @@ class GridPage(Gtk.Box):
     def set_icon_size(self, size: int):
         self._icon_size = size
         self._reload()
+
+    def apply_click_to_open_setting(self):
+        """Re-reads UserSettingsEntity.single_click_open and applies it to
+        the flow box live — called after Parameters is saved, no reload
+        needed since it's just a widget property, not entry data."""
+        self._flow_box.set_activate_on_single_click(
+            UserSettingsEntity().should_open_on_single_click()
+        )
 
     def _reload(self):
         if self._current_path is None:

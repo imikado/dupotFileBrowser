@@ -599,10 +599,18 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_menu_parameters(self, _action, _param):
         ParametersDialog(self._on_settings_saved).present(self)
 
-    def _on_settings_saved(self, hidden_files_changed=False):
+    def _on_settings_saved(self, hidden_files_changed=False, single_click_open_changed=False):
         self._apply_theme()
         if hidden_files_changed:
             self._active_browser_page().refresh_hidden_files()
+        if single_click_open_changed:
+            # Both pages, not just the active one — unlike hidden files
+            # (re-read fresh on every _reload), the click-to-open mode is
+            # a plain widget property set once at construction time, so
+            # whichever page isn't on screen right now would otherwise
+            # keep the stale setting until the app restarts.
+            self._grid_page.apply_click_to_open_setting()
+            self._details_page.apply_click_to_open_setting()
 
     def _on_view_mode_changed(self, mode: str):
         """ViewModeSwitcher already updated the in-memory

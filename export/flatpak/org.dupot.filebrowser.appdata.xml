@@ -53,7 +53,7 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release date="2026-08-22" version="1.0.20">
+    <release date="2026-08-22" version="1.0.21">
       <description>
         <ul>
           <li>Add in property popup for directory, size display</li>
@@ -61,6 +61,7 @@
           <li>Add display mode: icons with slider (used to display pictures)</li>
           <li>Add display mode: details</li>
           <li>Add in context menu: feature to compress</li>
+          <li>In parameter: add toggle to enable/disable click/double-click</li>
         </ul>
       </description>
     </release>

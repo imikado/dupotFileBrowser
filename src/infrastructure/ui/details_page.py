@@ -52,7 +52,9 @@ class DetailsPage(Gtk.Box):
 
     Same single-folder-in-place navigation as GridPage (not PathPage's
     Miller-column chain), and the same single-click-selects/double-click-
-    opens activation."""
+    opens activation by default — also flippable to single-click-opens
+    via Parameters > "Open with a single click", same as GridPage (see
+    apply_click_to_open_setting)."""
 
     def __init__(
         self,
@@ -81,6 +83,13 @@ class DetailsPage(Gtk.Box):
         self._column_view = Gtk.ColumnView(model=self._selection)
         self._column_view.set_show_row_separators(True)
         self._column_view.set_show_column_separators(False)
+        # False (the default) is what gives us "single click selects,
+        # double click/Enter activates" — see the class docstring. True
+        # (Parameters > "Open with a single click") instead activates on
+        # the first click.
+        self._column_view.set_single_click_activate(
+            UserSettingsEntity().should_open_on_single_click()
+        )
         self._column_view.connect("activate", self._on_row_activated)
         # Feeds the header-click ascending/descending state back into the
         # model doing the actual sorting — standard GtkColumnView wiring.
@@ -269,6 +278,14 @@ class DetailsPage(Gtk.Box):
 
     def refresh_hidden_files(self):
         self._reload()
+
+    def apply_click_to_open_setting(self):
+        """Re-reads UserSettingsEntity.single_click_open and applies it to
+        the column view live — called after Parameters is saved, no
+        reload needed since it's just a widget property, not entry data."""
+        self._column_view.set_single_click_activate(
+            UserSettingsEntity().should_open_on_single_click()
+        )
 
     def _on_style_dark_changed(self, _style_manager, _pspec):
         self._reload()

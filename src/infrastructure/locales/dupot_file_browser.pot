@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-22 14:57+0200\n"
+"POT-Creation-Date: 2026-08-22 15:18+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -71,105 +71,113 @@ msgstr ""
 msgid "{count} items"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:32
-#: src/infrastructure/ui/app_window.py:616
+#: src/infrastructure/ui/app_window.py:47
+#: src/infrastructure/ui/app_window.py:646
 msgid "File browser"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:62
+#: src/infrastructure/ui/app_window.py:77
 msgid "Parent folder"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:69
+#: src/infrastructure/ui/app_window.py:84
 msgid "Type a path and press Enter to go there"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:102
+#: src/infrastructure/ui/app_window.py:118
 #: src/infrastructure/ui/menu/parameters_dialog.py:19
 msgid "Parameters"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:103
+#: src/infrastructure/ui/app_window.py:119
 msgid "About"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:237
+#: src/infrastructure/ui/app_window.py:256
 msgid "Home"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:240
-#: src/infrastructure/ui/app_window.py:503
+#: src/infrastructure/ui/app_window.py:259
+#: src/infrastructure/ui/app_window.py:525
 #: src/infrastructure/ui/trash_page.py:32
 msgid "Trash"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:313
+#: src/infrastructure/ui/app_window.py:334
 msgid "Move file"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:313
+#: src/infrastructure/ui/app_window.py:334
 msgid "Paste the file"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:338
+#: src/infrastructure/ui/app_window.py:359
 #, python-brace-format
 msgid "{count} pending"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:369
+#: src/infrastructure/ui/app_window.py:390
 msgid "File already exists"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:371
+#: src/infrastructure/ui/app_window.py:392
 #, python-brace-format
 msgid "\"{name}\" already exists in this folder. Choose a new name."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:375
-#: src/infrastructure/ui/shared/compress_dialog.py:56
+#: src/infrastructure/ui/app_window.py:396
+#: src/infrastructure/ui/shared/compress_dialog.py:60
 #: src/infrastructure/ui/shared/confirm_dialog.py:14
 #: src/infrastructure/ui/shared/open_with_popup.py:90
 #: src/infrastructure/ui/shared/rename_dialog.py:33
 msgid "Cancel"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:376
+#: src/infrastructure/ui/app_window.py:397
 msgid "Move"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:376
+#: src/infrastructure/ui/app_window.py:397
 msgid "Paste"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:453
+#: src/infrastructure/ui/app_window.py:472
+msgid "Move failed"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:473
 #, python-brace-format
 msgid "Could not move \"{name}\" to this folder."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:455
+#: src/infrastructure/ui/app_window.py:475
+msgid "Compression failed"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:476
+#, python-brace-format
+msgid "Could not compress \"{name}\"."
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:478
+msgid "Copy failed"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:479
 #, python-brace-format
 msgid "Could not copy \"{name}\" to this folder."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:459
-msgid "Move failed"
-msgstr ""
-
-#: src/infrastructure/ui/app_window.py:459
-msgid "Copy failed"
-msgstr ""
-
-#: src/infrastructure/ui/app_window.py:461
-#: src/infrastructure/ui/details_page.py:438
-#: src/infrastructure/ui/details_page.py:478
-#: src/infrastructure/ui/details_page.py:498
-#: src/infrastructure/ui/grid_page.py:368
-#: src/infrastructure/ui/grid_page.py:408
-#: src/infrastructure/ui/grid_page.py:428
-#: src/infrastructure/ui/path_page.py:552
-#: src/infrastructure/ui/path_page.py:598
-#: src/infrastructure/ui/path_page.py:623
-#: src/infrastructure/ui/shared/compress_dialog.py:111
+#: src/infrastructure/ui/app_window.py:483
+#: src/infrastructure/ui/details_page.py:455
+#: src/infrastructure/ui/details_page.py:495
+#: src/infrastructure/ui/details_page.py:515
+#: src/infrastructure/ui/grid_page.py:383
+#: src/infrastructure/ui/grid_page.py:423
+#: src/infrastructure/ui/grid_page.py:443
+#: src/infrastructure/ui/path_page.py:554
+#: src/infrastructure/ui/path_page.py:600
+#: src/infrastructure/ui/path_page.py:625
 #: src/infrastructure/ui/shared/properties_dialog.py:228
 #: src/infrastructure/ui/shared/properties_dialog.py:358
 #: src/infrastructure/ui/shared/rename_dialog.py:77
@@ -177,164 +185,164 @@ msgstr ""
 msgid "OK"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:88
+#: src/infrastructure/ui/details_page.py:99
 #: src/infrastructure/ui/shared/properties_dialog.py:45
 msgid "Name"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:95
+#: src/infrastructure/ui/details_page.py:106
 #: src/infrastructure/ui/shared/properties_dialog.py:47
 msgid "Type"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:101
+#: src/infrastructure/ui/details_page.py:112
 #: src/infrastructure/ui/shared/properties_dialog.py:52
 #: src/infrastructure/ui/shared/properties_dialog.py:81
 msgid "Size"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:107
+#: src/infrastructure/ui/details_page.py:118
 #: src/infrastructure/ui/shared/properties_dialog.py:53
 msgid "Modified"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:122
-#: src/infrastructure/ui/grid_page.py:85 src/infrastructure/ui/path_page.py:88
+#: src/infrastructure/ui/details_page.py:133
+#: src/infrastructure/ui/grid_page.py:94 src/infrastructure/ui/path_page.py:88
 msgid "Empty folder"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:310
-#: src/infrastructure/ui/grid_page.py:240
-#: src/infrastructure/ui/path_page.py:397
+#: src/infrastructure/ui/details_page.py:329
+#: src/infrastructure/ui/grid_page.py:257
+#: src/infrastructure/ui/path_page.py:399
 #: src/infrastructure/ui/shared/open_with_popup.py:87
 #: src/infrastructure/ui/shared/properties_dialog.py:314
 msgid "Open"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:315
-#: src/infrastructure/ui/grid_page.py:245
-#: src/infrastructure/ui/path_page.py:402
+#: src/infrastructure/ui/details_page.py:334
+#: src/infrastructure/ui/grid_page.py:262
+#: src/infrastructure/ui/path_page.py:404
 msgid "Open With…"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:323
-#: src/infrastructure/ui/grid_page.py:253
-#: src/infrastructure/ui/path_page.py:414
+#: src/infrastructure/ui/details_page.py:342
+#: src/infrastructure/ui/grid_page.py:270
+#: src/infrastructure/ui/path_page.py:416
 msgid "Use as Wallpaper"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:331
-#: src/infrastructure/ui/grid_page.py:261
-#: src/infrastructure/ui/path_page.py:422
+#: src/infrastructure/ui/details_page.py:350
+#: src/infrastructure/ui/grid_page.py:278
+#: src/infrastructure/ui/path_page.py:424
 msgid "Add to favorites"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:337
-#: src/infrastructure/ui/grid_page.py:267
-#: src/infrastructure/ui/path_page.py:428
+#: src/infrastructure/ui/details_page.py:356
+#: src/infrastructure/ui/grid_page.py:284
+#: src/infrastructure/ui/path_page.py:430
 msgid "Compress…"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:352
-#: src/infrastructure/ui/grid_page.py:282
-#: src/infrastructure/ui/path_page.py:441
+#: src/infrastructure/ui/details_page.py:369
+#: src/infrastructure/ui/grid_page.py:297
+#: src/infrastructure/ui/path_page.py:443
 msgid "Copy"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:358
-#: src/infrastructure/ui/grid_page.py:288
-#: src/infrastructure/ui/path_page.py:447
+#: src/infrastructure/ui/details_page.py:375
+#: src/infrastructure/ui/grid_page.py:303
+#: src/infrastructure/ui/path_page.py:449
 msgid "Cut"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:363
-#: src/infrastructure/ui/grid_page.py:293
-#: src/infrastructure/ui/path_page.py:453
+#: src/infrastructure/ui/details_page.py:380
+#: src/infrastructure/ui/grid_page.py:308
+#: src/infrastructure/ui/path_page.py:455
 msgid "Copy Path"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:367
-#: src/infrastructure/ui/grid_page.py:297
-#: src/infrastructure/ui/path_page.py:459
+#: src/infrastructure/ui/details_page.py:384
+#: src/infrastructure/ui/grid_page.py:312
+#: src/infrastructure/ui/path_page.py:461
 msgid "Open Terminal Here"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:373
-#: src/infrastructure/ui/grid_page.py:303
-#: src/infrastructure/ui/path_page.py:465
+#: src/infrastructure/ui/details_page.py:390
+#: src/infrastructure/ui/grid_page.py:318
+#: src/infrastructure/ui/path_page.py:467
 #: src/infrastructure/ui/shared/rename_dialog.py:29
 #: src/infrastructure/ui/shared/rename_dialog.py:34
 msgid "Rename"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:385
-#: src/infrastructure/ui/grid_page.py:315
-#: src/infrastructure/ui/path_page.py:477
+#: src/infrastructure/ui/details_page.py:402
+#: src/infrastructure/ui/grid_page.py:330
+#: src/infrastructure/ui/path_page.py:479
 msgid "Add Color"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:395
-#: src/infrastructure/ui/grid_page.py:325
-#: src/infrastructure/ui/path_page.py:487
+#: src/infrastructure/ui/details_page.py:412
+#: src/infrastructure/ui/grid_page.py:340
+#: src/infrastructure/ui/path_page.py:489
 msgid "Properties"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:403
-#: src/infrastructure/ui/details_page.py:408
-#: src/infrastructure/ui/grid_page.py:333
-#: src/infrastructure/ui/grid_page.py:338
-#: src/infrastructure/ui/path_page.py:495
-#: src/infrastructure/ui/path_page.py:500
+#: src/infrastructure/ui/details_page.py:420
+#: src/infrastructure/ui/details_page.py:425
+#: src/infrastructure/ui/grid_page.py:348
+#: src/infrastructure/ui/grid_page.py:353
+#: src/infrastructure/ui/path_page.py:497
+#: src/infrastructure/ui/path_page.py:502
 msgid "Move to Trash"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:406
-#: src/infrastructure/ui/grid_page.py:336
-#: src/infrastructure/ui/path_page.py:498
+#: src/infrastructure/ui/details_page.py:423
+#: src/infrastructure/ui/grid_page.py:351
+#: src/infrastructure/ui/path_page.py:500
 msgid "Move to Trash?"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:407
-#: src/infrastructure/ui/grid_page.py:337
-#: src/infrastructure/ui/path_page.py:499
+#: src/infrastructure/ui/details_page.py:424
+#: src/infrastructure/ui/grid_page.py:352
+#: src/infrastructure/ui/path_page.py:501
 #, python-brace-format
 msgid "\"{name}\" will be moved to the Trash."
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:435
-#: src/infrastructure/ui/grid_page.py:365
-#: src/infrastructure/ui/path_page.py:549
+#: src/infrastructure/ui/details_page.py:452
+#: src/infrastructure/ui/grid_page.py:380
+#: src/infrastructure/ui/path_page.py:551
 msgid "Could not move to Trash"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:436
-#: src/infrastructure/ui/grid_page.py:366
-#: src/infrastructure/ui/path_page.py:550
+#: src/infrastructure/ui/details_page.py:453
+#: src/infrastructure/ui/grid_page.py:381
+#: src/infrastructure/ui/path_page.py:552
 #, python-brace-format
 msgid "\"{name}\" could not be moved to the Trash."
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:475
-#: src/infrastructure/ui/grid_page.py:405
-#: src/infrastructure/ui/path_page.py:595
+#: src/infrastructure/ui/details_page.py:492
+#: src/infrastructure/ui/grid_page.py:420
+#: src/infrastructure/ui/path_page.py:597
 msgid "No terminal found"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:476
-#: src/infrastructure/ui/grid_page.py:406
-#: src/infrastructure/ui/path_page.py:596
+#: src/infrastructure/ui/details_page.py:493
+#: src/infrastructure/ui/grid_page.py:421
+#: src/infrastructure/ui/path_page.py:598
 msgid "No terminal emulator could be found on this system."
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:495
-#: src/infrastructure/ui/grid_page.py:425
-#: src/infrastructure/ui/path_page.py:620
+#: src/infrastructure/ui/details_page.py:512
+#: src/infrastructure/ui/grid_page.py:440
+#: src/infrastructure/ui/path_page.py:622
 msgid "Could not set wallpaper"
 msgstr ""
 
-#: src/infrastructure/ui/details_page.py:496
-#: src/infrastructure/ui/grid_page.py:426
-#: src/infrastructure/ui/path_page.py:621
+#: src/infrastructure/ui/details_page.py:513
+#: src/infrastructure/ui/grid_page.py:441
+#: src/infrastructure/ui/path_page.py:623
 msgid "No supported desktop environment setting could be found."
 msgstr ""
 
@@ -368,7 +376,17 @@ msgstr ""
 msgid "Display files and folders whose name starts with a dot."
 msgstr ""
 
-#: src/infrastructure/ui/menu/parameters_dialog.py:79
+#: src/infrastructure/ui/menu/parameters_dialog.py:77
+msgid "Open with a single click"
+msgstr ""
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:80
+msgid ""
+"In Grid and Details view, open a file or folder with a single click instead "
+"of a double click. Doesn't affect Columns view."
+msgstr ""
+
+#: src/infrastructure/ui/menu/parameters_dialog.py:92
 msgid "Save"
 msgstr ""
 
@@ -376,43 +394,34 @@ msgstr ""
 msgid "Remove Color"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:17
+#: src/infrastructure/ui/shared/compress_dialog.py:16
 msgid "ZIP archive (.zip)"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:18
+#: src/infrastructure/ui/shared/compress_dialog.py:17
 msgid "Tar.gz archive (.tar.gz)"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:19
+#: src/infrastructure/ui/shared/compress_dialog.py:18
 msgid "Tar.bz2 archive (.tar.bz2)"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:20
+#: src/infrastructure/ui/shared/compress_dialog.py:19
 msgid "Tar.xz archive (.tar.xz)"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:21
+#: src/infrastructure/ui/shared/compress_dialog.py:20
 msgid "Tar archive (.tar)"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:52
-#: src/infrastructure/ui/shared/compress_dialog.py:57
+#: src/infrastructure/ui/shared/compress_dialog.py:56
+#: src/infrastructure/ui/shared/compress_dialog.py:61
 msgid "Compress"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:53
+#: src/infrastructure/ui/shared/compress_dialog.py:57
 #, python-brace-format
 msgid "Choose an archive name and format for \"{name}\"."
-msgstr ""
-
-#: src/infrastructure/ui/shared/compress_dialog.py:107
-#, python-brace-format
-msgid "Could not compress \"{name}\"."
-msgstr ""
-
-#: src/infrastructure/ui/shared/compress_dialog.py:110
-msgid "Compression failed"
 msgstr ""
 
 #: src/infrastructure/ui/shared/open_with_popup.py:77
