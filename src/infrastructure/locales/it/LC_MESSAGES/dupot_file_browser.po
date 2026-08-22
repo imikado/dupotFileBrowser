@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-22 11:35+0200\n"
+"POT-Creation-Date: 2026-08-22 11:52+0200\n"
 "PO-Revision-Date: 2026-08-16 09:34+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/infrastructure/api/system_api.py:350
+#: src/infrastructure/api/system_api.py:433
 #, python-brace-format
 msgid "{count} items"
 msgstr "{count} elementi"
@@ -110,8 +110,9 @@ msgid "Copy failed"
 msgstr "Copia non riuscita"
 
 #: src/infrastructure/ui/app_window.py:417
-#: src/infrastructure/ui/path_page.py:525
-#: src/infrastructure/ui/path_page.py:571
+#: src/infrastructure/ui/path_page.py:539
+#: src/infrastructure/ui/path_page.py:585
+#: src/infrastructure/ui/path_page.py:610
 #: src/infrastructure/ui/shared/properties_dialog.py:228
 #: src/infrastructure/ui/shared/properties_dialog.py:358
 #: src/infrastructure/ui/shared/rename_dialog.py:77
@@ -155,85 +156,97 @@ msgstr "Mostra i file e le cartelle il cui nome inizia con un punto."
 msgid "Save"
 msgstr "Salva"
 
-#: src/infrastructure/ui/path_page.py:85
+#: src/infrastructure/ui/path_page.py:87
 msgid "Empty folder"
 msgstr "Cartella vuota"
 
-#: src/infrastructure/ui/path_page.py:394
+#: src/infrastructure/ui/path_page.py:396
 #: src/infrastructure/ui/shared/open_with_popup.py:87
 #: src/infrastructure/ui/shared/properties_dialog.py:314
 msgid "Open"
 msgstr "Apri"
 
-#: src/infrastructure/ui/path_page.py:399
+#: src/infrastructure/ui/path_page.py:401
 msgid "Open With…"
 msgstr "Apri con…"
 
-#: src/infrastructure/ui/path_page.py:407
+#: src/infrastructure/ui/path_page.py:413
+msgid "Use as Wallpaper"
+msgstr "Usa come sfondo"
+
+#: src/infrastructure/ui/path_page.py:421
 msgid "Add to favorites"
 msgstr "Aggiungi ai preferiti"
 
-#: src/infrastructure/ui/path_page.py:414
+#: src/infrastructure/ui/path_page.py:428
 msgid "Copy"
 msgstr "Copia"
 
-#: src/infrastructure/ui/path_page.py:420
+#: src/infrastructure/ui/path_page.py:434
 msgid "Cut"
 msgstr "Taglia"
 
-#: src/infrastructure/ui/path_page.py:426
+#: src/infrastructure/ui/path_page.py:440
 msgid "Copy Path"
 msgstr "Copia percorso"
 
-#: src/infrastructure/ui/path_page.py:432
+#: src/infrastructure/ui/path_page.py:446
 msgid "Open Terminal Here"
 msgstr "Apri terminale qui"
 
-#: src/infrastructure/ui/path_page.py:438
+#: src/infrastructure/ui/path_page.py:452
 #: src/infrastructure/ui/shared/rename_dialog.py:29
 #: src/infrastructure/ui/shared/rename_dialog.py:34
 msgid "Rename"
 msgstr "Rinomina"
 
-#: src/infrastructure/ui/path_page.py:450
+#: src/infrastructure/ui/path_page.py:464
 msgid "Add Color"
 msgstr "Aggiungi colore"
 
-#: src/infrastructure/ui/path_page.py:460
+#: src/infrastructure/ui/path_page.py:474
 msgid "Properties"
 msgstr "Proprietà"
 
-#: src/infrastructure/ui/path_page.py:468
-#: src/infrastructure/ui/path_page.py:473
+#: src/infrastructure/ui/path_page.py:482
+#: src/infrastructure/ui/path_page.py:487
 msgid "Move to Trash"
 msgstr "Sposta nel cestino"
 
-#: src/infrastructure/ui/path_page.py:471
+#: src/infrastructure/ui/path_page.py:485
 msgid "Move to Trash?"
 msgstr "Spostare nel cestino?"
 
-#: src/infrastructure/ui/path_page.py:472
+#: src/infrastructure/ui/path_page.py:486
 #, python-brace-format
 msgid "\"{name}\" will be moved to the Trash."
 msgstr "\"{name}\" verrà spostato nel cestino."
 
-#: src/infrastructure/ui/path_page.py:522
+#: src/infrastructure/ui/path_page.py:536
 msgid "Could not move to Trash"
 msgstr "Impossibile spostare nel cestino"
 
-#: src/infrastructure/ui/path_page.py:523
+#: src/infrastructure/ui/path_page.py:537
 #, python-brace-format
 msgid "\"{name}\" could not be moved to the Trash."
 msgstr "Impossibile spostare \"{name}\" nel cestino."
 
-#: src/infrastructure/ui/path_page.py:568
+#: src/infrastructure/ui/path_page.py:582
 msgid "No terminal found"
 msgstr "Nessun terminale trovato"
 
-#: src/infrastructure/ui/path_page.py:569
+#: src/infrastructure/ui/path_page.py:583
 msgid "No terminal emulator could be found on this system."
 msgstr ""
 "Non è stato possibile trovare alcun emulatore di terminale su questo sistema."
+
+#: src/infrastructure/ui/path_page.py:607
+msgid "Could not set wallpaper"
+msgstr "Impossibile impostare lo sfondo"
+
+#: src/infrastructure/ui/path_page.py:608
+msgid "No supported desktop environment setting could be found."
+msgstr "Non è stata trovata alcuna impostazione supportata per l'ambiente desktop."
 
 #: src/infrastructure/ui/shared/color_picker_popup.py:113
 msgid "Remove Color"

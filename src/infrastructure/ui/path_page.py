@@ -1,3 +1,5 @@
+import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -401,6 +403,18 @@ class PathPage(Gtk.Box):
                 )
             )
 
+        # get_icon_key()'s extension map is what already decides this row
+        # gets the generic "image" row icon — reused here rather than a
+        # separate content-type query, since it's already the app's one
+        # notion of "this file is an image".
+        if not entry.is_dir and entry.get_icon_key() == "image":
+            item_list.append(
+                ContextMenuItem(
+                    _("Use as Wallpaper"),
+                    lambda: self._set_wallpaper(entry.path, row.get_root()),
+                )
+            )
+
         if entry.is_dir:
             item_list.append(
                 ContextMenuItem(
@@ -567,6 +581,31 @@ class PathPage(Gtk.Box):
         dialog = Adw.AlertDialog(
             heading=_("No terminal found"),
             body=_("No terminal emulator could be found on this system."),
+        )
+        dialog.add_response("ok", _("OK"))
+        dialog.present(root)
+
+    def _set_wallpaper(self, path: str, root):
+        """SystemApi.set_wallpaper tries several desktop-specific setters
+        in turn (gsettings, xfconf-query...), each a real subprocess call
+        — off the main thread so a slow/hanging one can't freeze the
+        window, same threading.Thread + GLib.idle_add handoff as
+        app_window.py's paste jobs."""
+        def run():
+            success = self._system_api.set_wallpaper(path)
+            GLib.idle_add(self._on_wallpaper_set, success, root)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_wallpaper_set(self, success: bool, root):
+        if not success:
+            self._show_wallpaper_error(root)
+        return GLib.SOURCE_REMOVE
+
+    def _show_wallpaper_error(self, root):
+        dialog = Adw.AlertDialog(
+            heading=_("Could not set wallpaper"),
+            body=_("No supported desktop environment setting could be found."),
         )
         dialog.add_response("ok", _("OK"))
         dialog.present(root)

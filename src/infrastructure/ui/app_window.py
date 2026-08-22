@@ -8,6 +8,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
+from domain.conf.app_version_conf import APP_VERSION
 from domain.entity.user_settings_entity import UserSettingsEntity
 from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
@@ -18,7 +19,6 @@ from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShare
 from infrastructure.ui.trash_page import TrashPage
 
 APP_ID = "org.dupot.filebrowser"
-APP_VERSION = "1.0.17"
 
 
 class MainWindow(Adw.ApplicationWindow):

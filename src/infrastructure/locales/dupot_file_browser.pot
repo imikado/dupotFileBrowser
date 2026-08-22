@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-22 11:35+0200\n"
+"POT-Creation-Date: 2026-08-22 11:52+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/infrastructure/api/system_api.py:350
+#: src/infrastructure/api/system_api.py:433
 #, python-brace-format
 msgid "{count} items"
 msgstr ""
@@ -110,8 +110,9 @@ msgid "Copy failed"
 msgstr ""
 
 #: src/infrastructure/ui/app_window.py:417
-#: src/infrastructure/ui/path_page.py:525
-#: src/infrastructure/ui/path_page.py:571
+#: src/infrastructure/ui/path_page.py:539
+#: src/infrastructure/ui/path_page.py:585
+#: src/infrastructure/ui/path_page.py:610
 #: src/infrastructure/ui/shared/properties_dialog.py:228
 #: src/infrastructure/ui/shared/properties_dialog.py:358
 #: src/infrastructure/ui/shared/rename_dialog.py:77
@@ -153,83 +154,95 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:85
+#: src/infrastructure/ui/path_page.py:87
 msgid "Empty folder"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:394
+#: src/infrastructure/ui/path_page.py:396
 #: src/infrastructure/ui/shared/open_with_popup.py:87
 #: src/infrastructure/ui/shared/properties_dialog.py:314
 msgid "Open"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:399
+#: src/infrastructure/ui/path_page.py:401
 msgid "Open With…"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:407
+#: src/infrastructure/ui/path_page.py:413
+msgid "Use as Wallpaper"
+msgstr ""
+
+#: src/infrastructure/ui/path_page.py:421
 msgid "Add to favorites"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:414
+#: src/infrastructure/ui/path_page.py:428
 msgid "Copy"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:420
+#: src/infrastructure/ui/path_page.py:434
 msgid "Cut"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:426
+#: src/infrastructure/ui/path_page.py:440
 msgid "Copy Path"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:432
+#: src/infrastructure/ui/path_page.py:446
 msgid "Open Terminal Here"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:438
+#: src/infrastructure/ui/path_page.py:452
 #: src/infrastructure/ui/shared/rename_dialog.py:29
 #: src/infrastructure/ui/shared/rename_dialog.py:34
 msgid "Rename"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:450
+#: src/infrastructure/ui/path_page.py:464
 msgid "Add Color"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:460
+#: src/infrastructure/ui/path_page.py:474
 msgid "Properties"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:468
-#: src/infrastructure/ui/path_page.py:473
+#: src/infrastructure/ui/path_page.py:482
+#: src/infrastructure/ui/path_page.py:487
 msgid "Move to Trash"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:471
+#: src/infrastructure/ui/path_page.py:485
 msgid "Move to Trash?"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:472
+#: src/infrastructure/ui/path_page.py:486
 #, python-brace-format
 msgid "\"{name}\" will be moved to the Trash."
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:522
+#: src/infrastructure/ui/path_page.py:536
 msgid "Could not move to Trash"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:523
+#: src/infrastructure/ui/path_page.py:537
 #, python-brace-format
 msgid "\"{name}\" could not be moved to the Trash."
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:568
+#: src/infrastructure/ui/path_page.py:582
 msgid "No terminal found"
 msgstr ""
 
-#: src/infrastructure/ui/path_page.py:569
+#: src/infrastructure/ui/path_page.py:583
 msgid "No terminal emulator could be found on this system."
+msgstr ""
+
+#: src/infrastructure/ui/path_page.py:607
+msgid "Could not set wallpaper"
+msgstr ""
+
+#: src/infrastructure/ui/path_page.py:608
+msgid "No supported desktop environment setting could be found."
 msgstr ""
 
 #: src/infrastructure/ui/shared/color_picker_popup.py:113

@@ -295,16 +295,99 @@ class SystemApi(SystemApiContract):
         trying to launch each candidate and seeing what fails: a failed
         exec happens *after* Gio.Subprocess.new returns (fire-and-forget,
         see open_terminal), so there'd be nothing to catch here."""
+        return self._run_host_command(["sh", "-c", f"command -v {shlex.quote(binary)}"])
+
+    def _run_host_command(self, argv: list[str]) -> bool:
+        """Runs `argv` to completion (on the host if sandboxed — see
+        _host_argv) and reports whether it exited successfully. Used for
+        short-lived probes/setters (existence checks, gsettings/
+        xfconf-query calls) — never for anything long-running like a
+        terminal window, which needs the fire-and-forget
+        Gio.Subprocess.new open_terminal uses instead."""
         try:
             result = subprocess.run(
-                self._host_argv(["sh", "-c", f"command -v {shlex.quote(binary)}"]),
+                self._host_argv(argv),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=2,
+                timeout=5,
             )
             return result.returncode == 0
         except (OSError, subprocess.SubprocessError):
             return False
+
+    def set_wallpaper(self, path: str) -> bool:
+        """Sets `path` (an image) as the desktop background — "Use as
+        Wallpaper" in the context menu. There's no portal for this
+        (unlike open_path's OpenURI), so — same spirit as open_terminal —
+        a handful of desktop-specific setters are tried in turn until one
+        reports success; each runs on the host (flatpak-spawn --host,
+        see _host_argv) since none of gsettings/xfconf-query/
+        plasma-apply-wallpaperimage live in the sandboxed org.gnome.
+        Platform runtime."""
+        uri = self.get_uri(path)
+        setter_list = [
+            # GNOME/most distros' default desktop schema.
+            lambda: self._set_gsettings_wallpaper("org.gnome.desktop.background", uri),
+            # Cinnamon — Linux Mint's default desktop, and this app's
+            # other primary target (see NEMO_FOLDER_COLOR_THEMES above).
+            lambda: self._set_gsettings_wallpaper("org.cinnamon.desktop.background", uri),
+            # MATE's schema takes a plain path, not a URI.
+            lambda: self._run_host_command(
+                ["gsettings", "set", "org.mate.background", "picture-filename", path]
+            ),
+            # KDE Plasma 5.19+ ships this dedicated one-shot command.
+            lambda: self._host_command_exists("plasma-apply-wallpaperimage")
+            and self._run_host_command(["plasma-apply-wallpaperimage", path]),
+            # XFCE stores the backdrop per monitor/workspace under
+            # xfce4-desktop's config channel — every property ending in
+            # "last-image" needs setting, there's no single global key.
+            lambda: self._set_xfce_wallpaper(path),
+            # Last-resort fallback for minimal/tiling window managers with
+            # no desktop-session settings of their own.
+            lambda: self._host_command_exists("feh")
+            and self._run_host_command(["feh", "--bg-fill", path]),
+        ]
+        return any(setter() for setter in setter_list)
+
+    def _set_gsettings_wallpaper(self, schema: str, uri: str) -> bool:
+        """Sets `schema`'s picture-uri key — the actual "did this desktop
+        even have this schema" signal (gsettings exits non-zero on an
+        unknown schema/key, letting set_wallpaper's `any()` fall through
+        to the next desktop). picture-uri-dark is set too where it exists
+        (GNOME 42+/Cinnamon 5.4+) but only best-effort: it's not present
+        on older versions, and that alone shouldn't read as "this schema
+        doesn't apply here" once the light variant already succeeded."""
+        if not self._run_host_command(["gsettings", "set", schema, "picture-uri", uri]):
+            return False
+        self._run_host_command(["gsettings", "set", schema, "picture-uri-dark", uri])
+        return True
+
+    def _set_xfce_wallpaper(self, path: str) -> bool:
+        if not self._host_command_exists("xfconf-query"):
+            return False
+        try:
+            result = subprocess.run(
+                self._host_argv(["xfconf-query", "-c", "xfce4-desktop", "-l"]),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        if result.returncode != 0:
+            return False
+
+        property_list = [
+            line.strip() for line in result.stdout.splitlines() if line.strip().endswith("last-image")
+        ]
+        did_set_one = False
+        for property_path in property_list:
+            if self._run_host_command(
+                ["xfconf-query", "-c", "xfce4-desktop", "-p", property_path, "-s", path]
+            ):
+                did_set_one = True
+        return did_set_one
 
     def get_uri(self, path: str) -> str:
         return Gio.File.new_for_path(path).get_uri()

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Sync app_window.py's APP_VERSION with appdata.xml's version of record,
-and optionally cut the release for it.
+"""Sync app_version_conf.py's APP_VERSION with appdata.xml's version of
+record, and optionally cut the release for it.
 
 appdata.xml (export/flatpak/org.dupot.filebrowser.appdata.xml) is what
 Flatpak/appstream actually show the user, and each release() bump belongs
 there first — see org.dupot.filebrowser.appdata.xml's <releases>, newest
-first. APP_VERSION in app_window.py (shown in the "About" dialog) is a
-separate hardcoded copy that has to be kept in sync by hand, and it's
-already drifted from appdata.xml once. This script closes that loop:
-read the first (= latest) <release version="..."> entry and write it
-into APP_VERSION, instead of editing both by hand.
+first. APP_VERSION in domain/conf/app_version_conf.py (shown in the
+"About" dialog, via app_window.py) is a separate hardcoded copy that has
+to be kept in sync by hand, and it's already drifted from appdata.xml
+once. This script closes that loop: read the first (= latest) <release
+version="..."> entry and write it into APP_VERSION, instead of editing
+both by hand.
 
 Usage:
     ./update_version.py             # sync APP_VERSION only
@@ -29,7 +30,7 @@ import xml.etree.ElementTree as ET
 
 ROOT_DIR = pathlib.Path(__file__).parent
 APPDATA_PATH = ROOT_DIR / "export" / "flatpak" / "org.dupot.filebrowser.appdata.xml"
-APP_WINDOW_PATH = ROOT_DIR / "src" / "infrastructure" / "ui" / "app_window.py"
+APP_VERSION_CONF_PATH = ROOT_DIR / "src" / "domain" / "conf" / "app_version_conf.py"
 
 _APP_VERSION_RE = re.compile(r'^(APP_VERSION\s*=\s*)"([^"]*)"', re.MULTILINE)
 
@@ -47,20 +48,20 @@ def get_latest_version(appdata_path: pathlib.Path) -> str:
     return version
 
 
-def set_app_version(app_window_path: pathlib.Path, version: str) -> str | None:
-    """Rewrites APP_VERSION in app_window_path to `version`. Returns the
-    previous value, or None if it was already up to date."""
-    text = app_window_path.read_text(encoding="utf-8")
+def set_app_version(app_version_conf_path: pathlib.Path, version: str) -> str | None:
+    """Rewrites APP_VERSION in app_version_conf_path to `version`. Returns
+    the previous value, or None if it was already up to date."""
+    text = app_version_conf_path.read_text(encoding="utf-8")
     match = _APP_VERSION_RE.search(text)
     if match is None:
-        raise SystemExit(f"No APP_VERSION assignment found in {app_window_path}")
+        raise SystemExit(f"No APP_VERSION assignment found in {app_version_conf_path}")
 
     previous = match.group(2)
     if previous == version:
         return None
 
     new_text = _APP_VERSION_RE.sub(rf'\g<1>"{version}"', text, count=1)
-    app_window_path.write_text(new_text, encoding="utf-8")
+    app_version_conf_path.write_text(new_text, encoding="utf-8")
     return previous
 
 
@@ -97,7 +98,7 @@ def main() -> int:
     args = parser.parse_args()
 
     version = get_latest_version(APPDATA_PATH)
-    previous = set_app_version(APP_WINDOW_PATH, version)
+    previous = set_app_version(APP_VERSION_CONF_PATH, version)
     if previous is None:
         print(f"APP_VERSION already up to date ({version})")
     else:
