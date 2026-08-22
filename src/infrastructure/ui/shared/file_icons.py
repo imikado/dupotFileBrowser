@@ -6,7 +6,7 @@ gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("Gtk", "4.0")
 
 import cairo
-from gi.repository import Adw, Gdk, GdkPixbuf, Gtk
+from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 
 from domain.conf.path_conf import PathConf
 from domain.entity.user_settings_entity import UserSettingsEntity
@@ -65,11 +65,16 @@ _system_icon_cache: dict[tuple[str, int], Gtk.IconPaintable | None] = {}
 _texture_cache: dict[tuple[str, bool, int], Gdk.Texture] = {}
 
 # (icon_key, hex_color, size) -> Gdk.Texture, for Nemo-style colored
-# folders — same silhouette, recolored at runtime (see
-# _load_pixbuf/_tint_pixbuf) since a baked PNG can't take an arbitrary
-# user-picked color the way a real symbolic icon-name image can via CSS
-# "color".
+# folders when the system icon theme is off, or its "folder" icon isn't
+# a real file _get_system_tinted_texture can tint (see below) — same
+# silhouette, recolored at runtime (see _load_pixbuf/_tint_pixbuf).
 _tinted_texture_cache: dict[tuple[str, str, int], Gdk.Texture] = {}
+
+# (icon_key, hex_color, size) -> Gdk.Texture | None, for a colored folder
+# in system-icon-theme mode — see _get_system_tinted_texture. None is
+# cached too (a miss stays a miss for that combination), same reasoning
+# as _system_icon_cache.
+_system_tinted_texture_cache: dict[tuple[str, str, int], Gdk.Texture | None] = {}
 
 
 def _load_pixbuf(icon_key: str, dark: bool, size: int) -> GdkPixbuf.Pixbuf:
@@ -147,6 +152,39 @@ def _lookup_system_icon(icon_key: str, size: int) -> Gtk.IconPaintable | None:
     return paintable
 
 
+def _get_system_tinted_texture(icon_key: str, hex_color: str, size: int) -> Gdk.Texture | None:
+    """Tints the *regular* system-theme icon `icon_key` resolves to (the
+    exact same file an uncolored folder already shows — see
+    _lookup_system_icon) instead of our own baked PNG. Two things this
+    fixes over the baked-PNG tint: it matches the current icon theme's
+    actual folder artwork (a plain "always our own shape" tint looked
+    like a different icon family entirely next to an uncolored,
+    system-themed folder — confirmed visually), and most icon themes
+    ship several real sizes (or a scalable SVG), so this stays crisp
+    well past the 16px source our own baked icon is limited to.
+
+    None if there's no display to ask, the theme's icon isn't backed by
+    a real file GdkPixbuf can load (some icon caches/GResources aren't),
+    or loading it fails — callers fall back to the baked-PNG tint."""
+    cache_key = (icon_key, hex_color, size)
+    if cache_key in _system_tinted_texture_cache:
+        return _system_tinted_texture_cache[cache_key]
+
+    texture = None
+    paintable = _lookup_system_icon(icon_key, size)
+    gfile = paintable.get_file() if paintable is not None else None
+    path = gfile.get_path() if gfile is not None else None
+    if path is not None:
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(path, size, size)
+            texture = Gdk.Texture.new_for_pixbuf(_tint_pixbuf(pixbuf, hex_color))
+        except GLib.Error:
+            texture = None
+
+    _system_tinted_texture_cache[cache_key] = texture
+    return texture
+
+
 def _build_image(paintable: Gdk.Paintable, size: int) -> Gtk.Widget:
     image = Gtk.Image.new_from_paintable(paintable)
     # set_size_request alone is not enough — it only sets a layout-
@@ -184,9 +222,17 @@ def build_icon_image(icon_key: str, size: int = ICON_DISPLAY_SIZE) -> Gtk.Widget
 def build_folder_icon_image(color: str | None, size: int = ICON_DISPLAY_SIZE) -> Gtk.Widget:
     """The folder icon, recolored to `color` if a Nemo "Folder Color" tag
     is set on it — otherwise the plain light/dark folder icon, same as
-    build_file_icon_image. A colored tag always wins over the system
-    theme: recoloring an arbitrary system folder icon isn't supported,
-    only our own baked one (see _tint_pixbuf)."""
+    build_file_icon_image. In system-icon-theme mode, a colored folder
+    prefers a runtime tint of the theme's *own* folder icon — the exact
+    same artwork an uncolored folder next to it already shows, just
+    recolored — over our baked PNG's tint (see _get_system_tinted_texture
+    for why: shape consistency with every uncolored folder, and no
+    16px-source upscaling), falling back to the baked tint only if the
+    current theme's icon isn't available as a real file to tint."""
+    if color and UserSettingsEntity().use_system_icon_theme:
+        system_texture = _get_system_tinted_texture(_FOLDER_ICON_KEY, color, size)
+        if system_texture is not None:
+            return _build_image(system_texture, size)
     if color:
         return _build_image(_get_tinted_texture(_FOLDER_ICON_KEY, color, size), size)
     if UserSettingsEntity().use_system_icon_theme:
