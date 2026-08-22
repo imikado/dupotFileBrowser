@@ -53,11 +53,13 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release date="2026-08-22" version="1.0.18">
+    <release date="2026-08-22" version="1.0.19">
       <description>
         <ul>
           <li>Add in property popup for directory, size display</li>
           <li>Add in property popup for image, feature to set as wallpaper</li>
+          <li>Add display mode: icons with slider (used to display pictures)</li>
+          <li>Add display mode: details</li>
         </ul>
       </description>
     </release>

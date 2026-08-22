@@ -7,12 +7,16 @@ from gi.repository import Adw, Gtk
 
 from domain.entity.user_settings_entity import UserSettingsEntity
 
-# GTK4 bundles these two itself (confirmed present even with no host
-# icon theme installed) — unlike the mimetype names in file_icons.py
+# GTK4 bundles these itself (confirmed present even with no host icon
+# theme installed) — unlike the mimetype names in file_icons.py
 # (x-office-document and friends), which is why every other icon in this
 # app is a baked PNG instead of a system icon-theme lookup. Safe to use
-# Gtk.Image.new_from_icon_name directly for just this pair.
-_COLUMNS_ICON_NAME = "view-list-symbolic"
+# Gtk.Image.new_from_icon_name directly for this trio.
+# Two side-by-side panes — reads as "columns" and stays visually
+# distinct from Grid's 2x2 squares and Details' bulleted rows. Adwaita
+# has no "view-columns-symbolic" to reach for instead (confirmed absent
+# from the bundled runtime).
+_COLUMNS_ICON_NAME = "view-dual-symbolic"
 _GRID_ICON_NAME = "view-grid-symbolic"
 _DETAILS_ICON_NAME = "view-list-bullet-symbolic"
 
