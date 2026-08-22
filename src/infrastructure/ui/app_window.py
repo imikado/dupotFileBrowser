@@ -24,6 +24,21 @@ from infrastructure.ui.trash_page import TrashPage
 APP_ID = "org.dupot.filebrowser"
 
 
+class _FileOpJob:
+    """One queued background filesystem operation — a copy/move (from
+    the paste button) or a compress (from a folder's "Compress…" context
+    menu entry). All three share the same one-at-a-time queue (see
+    MainWindow._job_queue) so a slow compress on a big folder can't run
+    concurrently with, and fight over disk I/O with, a paste job, or vice
+    versa — and so both surface through the same pending-count badge."""
+
+    def __init__(self, kind: str, source: str, destination: str, archive_format: str | None = None):
+        self.kind = kind  # "copy" | "move" | "compress"
+        self.source = source
+        self.destination = destination
+        self.archive_format = archive_format  # only set for kind == "compress"
+
+
 class MainWindow(Adw.ApplicationWindow):
 
     def __init__(self, *args, **kwargs):
@@ -73,14 +88,15 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Path + mode ("copy"/"cut") last sent to the clipboard via the
         # "Copy"/"Cut" context menu entries (see PathPage's on_file_copied
-        # /on_file_cut), and the queue of paste jobs started from the
-        # button _update_paste_button() builds below. Each queue entry is
-        # (source, destination, is_cut) — is_cut picks mv vs cp for that
-        # one job, since jobs already queued keep whatever mode they were
-        # enqueued with even if the clipboard changes afterward.
+        # /on_file_cut).
         self._clipboard_path: str | None = None
         self._clipboard_is_cut: bool = False
-        self._paste_queue: list[tuple[str, str, bool]] = []
+        # Background job queue — copy/move (paste) jobs and compress jobs
+        # both land here and run one at a time (see _process_next_job),
+        # sharing the same pending-count badge the paste button shows
+        # (_update_paste_button/_build_pending_button) regardless of
+        # which kind of job is actually running.
+        self._job_queue: list[_FileOpJob] = []
         # Fixed-position, permanently packed placeholder — its content is
         # destroyed and rebuilt by _update_paste_button() (plain "Paste the
         # file" button, or the pending/badge button), but the slot itself
@@ -132,6 +148,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._refresh_side_menu,
             self._on_file_copied,
             self._on_file_cut,
+            self._on_compress_requested,
         )
         self._path_page.set_hexpand(True)
 
@@ -144,6 +161,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._refresh_side_menu,
             self._on_file_copied,
             self._on_file_cut,
+            self._on_compress_requested,
         )
         self._grid_page.set_hexpand(True)
 
@@ -155,6 +173,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._refresh_side_menu,
             self._on_file_copied,
             self._on_file_cut,
+            self._on_compress_requested,
         )
         self._details_page.set_hexpand(True)
 
@@ -261,6 +280,8 @@ class MainWindow(Adw.ApplicationWindow):
         self._refresh_side_menu()
 
     # --- Paste button (Copy -> Paste the file, with a pending-jobs badge) -
+    # Also drives the "Compress…" context menu entry (see
+    # _on_compress_requested) — same badge, same one-at-a-time queue.
 
     def _build_paste_badge_css_provider(self) -> Gtk.CssProvider:
         provider = Gtk.CssProvider()
@@ -296,7 +317,7 @@ class MainWindow(Adw.ApplicationWindow):
         widget, so a stale button never lingers on screen."""
         self._clear_paste_slot()
 
-        pending_count = len(self._paste_queue)
+        pending_count = len(self._job_queue)
         if pending_count > 0:
             self._paste_slot.append(self._build_pending_button(pending_count))
         elif self._clipboard_path:
@@ -358,7 +379,7 @@ class MainWindow(Adw.ApplicationWindow):
         if self._system_api.file_exists(destination):
             self._ask_new_name(source_path, name, is_cut)
         else:
-            self._enqueue_paste(source_path, destination, is_cut)
+            self._enqueue_job(_FileOpJob("move" if is_cut else "copy", source_path, destination))
 
     def _ask_new_name(self, source_path: str, taken_name: str, is_cut: bool):
         entry = Gtk.Entry()
@@ -390,73 +411,74 @@ class MainWindow(Adw.ApplicationWindow):
                 # Still taken: ask again instead of silently overwriting.
                 GLib.idle_add(self._ask_new_name, source_path, new_name, is_cut)
                 return
-            self._enqueue_paste(source_path, destination, is_cut)
+            self._enqueue_job(_FileOpJob("move" if is_cut else "copy", source_path, destination))
 
         dialog.connect("response", on_response)
         dialog.present(self)
 
-    def _enqueue_paste(self, source_path: str, destination: str, is_cut: bool):
-        was_idle = not self._paste_queue
-        self._paste_queue.append((source_path, destination, is_cut))
+    def _on_compress_requested(self, path: str, destination: str, archive_format: str):
+        """Called by compress_dialog.py once the user has picked a free
+        archive name/format for a folder's "Compress…" context menu
+        entry — queues the actual compression exactly like a paste job,
+        rather than running it on the spot, since it can take a while on
+        a large folder (see _FileOpJob)."""
+        self._enqueue_job(_FileOpJob("compress", path, destination, archive_format))
+
+    def _enqueue_job(self, job: _FileOpJob):
+        was_idle = not self._job_queue
+        self._job_queue.append(job)
         self._update_paste_button()
         if was_idle:
-            self._process_next_paste_job()
+            self._process_next_job()
 
-    def _process_next_paste_job(self):
-        """Runs the head-of-queue copy/move in a background thread (never
+    def _process_next_job(self):
+        """Runs the head-of-queue job in a background thread (never
         blocks the UI), same threading.Thread + GLib.idle_add handoff
         pattern as dupotEasyFlatpak's install/update jobs."""
-        if not self._paste_queue:
+        if not self._job_queue:
             return
-        source, destination, is_cut = self._paste_queue[0]
-        threading.Thread(
-            target=self._run_copy_job, args=(source, destination, is_cut), daemon=True
-        ).start()
+        threading.Thread(target=self._run_job, args=(self._job_queue[0],), daemon=True).start()
 
-    def _run_copy_job(self, source: str, destination: str, is_cut: bool):
-        # copy_path()/move_path() run in-process (shutil) — no host
-        # subprocess needed, --filesystem=host already gives direct access
-        # to both source and destination. Still off the main thread since
-        # a large copy/move is blocking.
-        error = (
-            self._system_api.move_path(source, destination)
-            if is_cut
-            else self._system_api.copy_path(source, destination)
-        )
-        GLib.idle_add(
-            self._on_copy_job_done,
-            0 if error is None else 1,
-            error or "",
-            source,
-            destination,
-            is_cut,
-        )
-
-    def _on_copy_job_done(
-        self, returncode: int, output: str, source: str, destination: str, is_cut: bool
-    ):
-        if self._paste_queue:
-            self._paste_queue.pop(0)
-        self._update_paste_button()
-        if returncode == 0:
-            self._active_browser_page().refresh_path(os.path.dirname(destination))
-            if is_cut:
-                self._active_browser_page().refresh_path(os.path.dirname(source))
+    def _run_job(self, job: _FileOpJob):
+        # copy_path()/move_path()/compress_path() all run in-process
+        # (shutil) — no host subprocess needed, --filesystem=host already
+        # gives direct access to source and destination alike. Still off
+        # the main thread since any of the three can be slow on a big
+        # folder.
+        if job.kind == "move":
+            error = self._system_api.move_path(job.source, job.destination)
+        elif job.kind == "compress":
+            error = self._system_api.compress_path(job.source, job.destination, job.archive_format)
         else:
-            self._show_copy_error(source, output, is_cut)
-        self._process_next_paste_job()
+            error = self._system_api.copy_path(job.source, job.destination)
+        GLib.idle_add(self._on_job_done, job, error)
+
+    def _on_job_done(self, job: _FileOpJob, error: str | None):
+        if self._job_queue:
+            self._job_queue.pop(0)
+        self._update_paste_button()
+        if error is None:
+            self._active_browser_page().refresh_path(os.path.dirname(job.destination))
+            if job.kind == "move":
+                self._active_browser_page().refresh_path(os.path.dirname(job.source))
+        else:
+            self._show_job_error(job, error)
+        self._process_next_job()
         return False
 
-    def _show_copy_error(self, source: str, output: str, is_cut: bool):
-        name = os.path.basename(source.rstrip("/"))
-        body = (
-            _('Could not move "{name}" to this folder.').format(name=name)
-            if is_cut
-            else _('Could not copy "{name}" to this folder.').format(name=name)
-        )
+    def _show_job_error(self, job: _FileOpJob, output: str):
+        name = os.path.basename(job.source.rstrip("/"))
+        if job.kind == "move":
+            heading = _("Move failed")
+            body = _('Could not move "{name}" to this folder.').format(name=name)
+        elif job.kind == "compress":
+            heading = _("Compression failed")
+            body = _('Could not compress "{name}".').format(name=name)
+        else:
+            heading = _("Copy failed")
+            body = _('Could not copy "{name}" to this folder.').format(name=name)
         if output:
             body += "\n\n" + output
-        heading = _("Move failed") if is_cut else _("Copy failed")
         dialog = Adw.AlertDialog(heading=heading, body=body)
         dialog.add_response("ok", _("OK"))
         dialog.present(self)

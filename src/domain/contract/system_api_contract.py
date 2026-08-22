@@ -84,6 +84,10 @@ class SystemApiContract(ABC):
         pass
 
     @abstractmethod
+    def compress_path(self, source: str, destination: str, archive_format: str) -> str | None:
+        pass
+
+    @abstractmethod
     def get_trash_dir(self) -> str:
         pass
 

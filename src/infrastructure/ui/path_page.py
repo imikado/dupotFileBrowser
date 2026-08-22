@@ -13,6 +13,7 @@ from domain.UseCase.list_directory_uc import ListDirectoryUc
 from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
 from infrastructure.ui.shared.color_picker_popup import show_color_picker_popup
+from infrastructure.ui.shared.compress_dialog import show_compress_dialog
 from infrastructure.ui.shared.confirm_dialog import show_confirm_dialog
 from infrastructure.ui.shared.context_menu_shared import ContextMenuItem, show_context_menu
 from infrastructure.ui.shared.file_icons import build_icon_image, build_folder_icon_image
@@ -202,12 +203,14 @@ class PathPage(Gtk.Box):
         on_favorites_changed=lambda: None,
         on_file_copied=lambda name, path: None,
         on_file_cut=lambda name, path: None,
+        on_compress_requested=lambda path, destination, archive_format: None,
     ):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL)
         self._on_path_changed = on_path_changed
         self._on_favorites_changed = on_favorites_changed
         self._on_file_copied = on_file_copied
         self._on_file_cut = on_file_cut
+        self._on_compress_requested = on_compress_requested
         # Absolute path of the last file/folder sent to the clipboard via
         # the "Copy" context menu entry (not "Cut" — see _copy_to_clipboard).
         self._last_copied_path: str | None = None
@@ -420,6 +423,18 @@ class PathPage(Gtk.Box):
                 ContextMenuItem(
                     _("Add to favorites"),
                     lambda: self._add_to_favorites(entry.name, entry.path),
+                )
+            )
+            item_list.append(
+                ContextMenuItem(
+                    _("Compress…"),
+                    lambda: show_compress_dialog(
+                        row.get_root(),
+                        self._system_api,
+                        entry.name,
+                        entry.path,
+                        self._on_compress_requested,
+                    ),
                 )
             )
 

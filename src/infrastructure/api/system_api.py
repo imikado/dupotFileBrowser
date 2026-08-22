@@ -541,6 +541,45 @@ class SystemApi(SystemApiContract):
         except (OSError, shutil.Error) as error:
             return str(error)
 
+    # archive_format (as chosen in compress_dialog.py) -> shutil's own
+    # format name (shutil.get_archive_formats()). Longest extensions
+    # first in _ARCHIVE_EXTENSIONS so ".tar.gz" is stripped whole instead
+    # of leaving a stray ".gz" behind from a ".tar" match.
+    _ARCHIVE_FORMAT_MAP = {
+        "zip": "zip",
+        "tar": "tar",
+        "tar.gz": "gztar",
+        "tar.bz2": "bztar",
+        "tar.xz": "xztar",
+    }
+    _ARCHIVE_EXTENSIONS = (".tar.gz", ".tar.bz2", ".tar.xz", ".tar", ".zip")
+
+    def compress_path(self, source: str, destination: str, archive_format: str) -> str | None:
+        """Builds `destination` (a full archive path, extension included)
+        from `source` (a file or folder) using Python's own zipfile/
+        tarfile modules via shutil.make_archive — same "stdlib in-process
+        instead of a host binary via flatpak-spawn" reasoning as
+        copy_path/move_path, so this works whether or not tar/zip happen
+        to be on PATH inside the sandbox. None on success, error text on
+        failure."""
+        shutil_format = self._ARCHIVE_FORMAT_MAP.get(archive_format)
+        if shutil_format is None:
+            return f"Unsupported archive format: {archive_format}"
+
+        base_name = destination
+        for extension in self._ARCHIVE_EXTENSIONS:
+            if base_name.endswith(extension):
+                base_name = base_name[: -len(extension)]
+                break
+
+        root_dir = os.path.dirname(source.rstrip("/"))
+        base_dir = os.path.basename(source.rstrip("/"))
+        try:
+            shutil.make_archive(base_name, shutil_format, root_dir=root_dir, base_dir=base_dir)
+            return None
+        except (OSError, ValueError) as error:
+            return str(error)
+
     def _get_real_trash_base_dir(self) -> str:
         # Deliberately NOT GLib.get_user_data_dir(): under Flatpak that
         # resolves $XDG_DATA_HOME, which Flatpak always redirects to the
