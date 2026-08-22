@@ -64,6 +64,10 @@ class SystemApiContract(ABC):
         pass
 
     @abstractmethod
+    def get_dir_size(self, path: str) -> int:
+        pass
+
+    @abstractmethod
     def set_file_permissions(self, path: str, mode: int) -> bool:
         pass
 

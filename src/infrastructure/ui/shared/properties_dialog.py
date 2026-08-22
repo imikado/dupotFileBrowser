@@ -1,4 +1,5 @@
 import stat
+import threading
 
 import gi
 
@@ -44,11 +45,11 @@ def show_properties_dialog(root, system_api, name: str, path: str, is_dir: bool)
     _add_row(general_group, _("Name"), properties.name)
     _add_row(general_group, _("Location"), properties.location)
     _add_row(general_group, _("Type"), properties.type_description)
-    _add_row(
-        general_group,
-        _("Contains") if properties.is_dir else _("Size"),
-        properties.size_display,
-    )
+    if properties.is_dir:
+        _add_row(general_group, _("Contains"), properties.size_display)
+        _add_dir_size_row(general_group, system_api, path)
+    else:
+        _add_row(general_group, _("Size"), properties.size_display)
     _add_row(general_group, _("Modified"), properties.modified_display)
 
     _add_permissions_page(dialog, system_api, properties, path)
@@ -59,13 +60,42 @@ def show_properties_dialog(root, system_api, name: str, path: str, is_dir: bool)
     dialog.present(root)
 
 
-def _add_row(group: Adw.PreferencesGroup, title: str, value: str | None):
+def _add_row(group: Adw.PreferencesGroup, title: str, value: str | None) -> Adw.ActionRow:
     row = Adw.ActionRow()
     row.set_title(title)
     row.set_subtitle(value if value else "—")
     # A path or a long type name should be copy-pastable, not just visible.
     row.set_subtitle_selectable(True)
     group.add(row)
+    return row
+
+
+def _add_dir_size_row(group: Adw.PreferencesGroup, system_api, path: str):
+    """Adds the folder's total on-disk size ("poids"), next to its item
+    count (see the "Contains" row) — computed in a background thread
+    (SystemApi.get_dir_size walks the whole tree, which can take a while
+    on a large folder) so opening Properties never blocks on it, same
+    threading.Thread + GLib.idle_add handoff as app_window.py's paste
+    jobs. Starts on "Calculating…" and is swapped for the real size once
+    the walk finishes."""
+    row = _add_row(group, _("Size"), _("Calculating…"))
+    row.set_subtitle_selectable(False)
+
+    def compute():
+        total_bytes = system_api.get_dir_size(path)
+        GLib.idle_add(_on_dir_size_computed, row, total_bytes)
+
+    threading.Thread(target=compute, daemon=True).start()
+
+
+def _on_dir_size_computed(row: Adw.ActionRow, total_bytes: int):
+    # The dialog (and this row with it) may already be closed by the time
+    # a large folder finishes walking — get_root() goes None once it's
+    # been removed from the widget tree, nothing to update in that case.
+    if row.get_root() is not None:
+        row.set_subtitle(GLib.format_size(total_bytes))
+        row.set_subtitle_selectable(True)
+    return GLib.SOURCE_REMOVE
 
 
 def _add_permissions_page(

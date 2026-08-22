@@ -382,6 +382,23 @@ class SystemApi(SystemApiContract):
             is_dir=is_dir,
         )
 
+    def get_dir_size(self, path: str) -> int:
+        total = 0
+        try:
+            with os.scandir(path) as it:
+                for entry in it:
+                    try:
+                        # follow_symlinks=False évite de suivre les liens et de bloquer
+                        if entry.is_file(follow_symlinks=False):
+                            total += entry.stat(follow_symlinks=False).st_size
+                        elif entry.is_dir(follow_symlinks=False):
+                            total += self.get_dir_size(entry.path)
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+        return total
+
     def set_file_permissions(self, path: str, mode: int) -> bool:
         """chmod, straight on the host path — no flatpak-spawn needed,
         the sandbox already sees this file directly (--filesystem=host),
