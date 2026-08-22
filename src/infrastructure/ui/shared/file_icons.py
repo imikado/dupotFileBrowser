@@ -55,32 +55,38 @@ _SYSTEM_ICON_NAME_MAP = {
 # have that name — remembered so a miss isn't re-probed on every row.
 # Not keyed by theme name: a live theme switch is rare enough that a
 # restart (see ParametersDialog) is an acceptable way to pick it up,
-# same as the language setting.
-_system_icon_cache: dict[str, Gtk.IconPaintable | None] = {}
+# same as the language setting. Keyed by size too — GridPage asks for
+# these at its own (user-chosen) icon size, not just ICON_DISPLAY_SIZE.
+_system_icon_cache: dict[tuple[str, int], Gtk.IconPaintable | None] = {}
 
-# (icon_key, dark) -> Gdk.Texture, built once and reused across rows —
-# Gdk.Texture is an immutable paintable, safe to share unlike Gtk.Widget.
-_texture_cache: dict[tuple[str, bool], Gdk.Texture] = {}
+# (icon_key, dark, size) -> Gdk.Texture, built once and reused across
+# rows/tiles — Gdk.Texture is an immutable paintable, safe to share
+# unlike Gtk.Widget.
+_texture_cache: dict[tuple[str, bool, int], Gdk.Texture] = {}
 
-# (icon_key, hex_color) -> Gdk.Texture, for Nemo-style colored folders —
-# same silhouette, recolored at runtime (see _load_pixbuf/_tint_pixbuf)
-# since a baked PNG can't take an arbitrary user-picked color the way a
-# real symbolic icon-name image can via CSS "color".
-_tinted_texture_cache: dict[tuple[str, str], Gdk.Texture] = {}
+# (icon_key, hex_color, size) -> Gdk.Texture, for Nemo-style colored
+# folders — same silhouette, recolored at runtime (see
+# _load_pixbuf/_tint_pixbuf) since a baked PNG can't take an arbitrary
+# user-picked color the way a real symbolic icon-name image can via CSS
+# "color".
+_tinted_texture_cache: dict[tuple[str, str, int], Gdk.Texture] = {}
 
 
-def _load_pixbuf(icon_key: str, dark: bool) -> GdkPixbuf.Pixbuf:
+def _load_pixbuf(icon_key: str, dark: bool, size: int) -> GdkPixbuf.Pixbuf:
+    # The baked PNGs only ship at ICON_DISPLAY_SIZE (16px) — GdkPixbuf
+    # upscales anything bigger than that itself (bilinear, so "soft"
+    # rather than blocky). Acceptable for a generic file-type icon in the
+    # grid view; real images get an actual thumbnail instead (see
+    # GridPage), which is the case this matters for.
     path = PathConf().get_asset_file_icon_path(icon_key, dark)
-    return GdkPixbuf.Pixbuf.new_from_file_at_size(
-        path, ICON_DISPLAY_SIZE, ICON_DISPLAY_SIZE
-    )
+    return GdkPixbuf.Pixbuf.new_from_file_at_size(path, size, size)
 
 
-def _get_texture(icon_key: str, dark: bool) -> Gdk.Texture:
-    cache_key = (icon_key, dark)
+def _get_texture(icon_key: str, dark: bool, size: int) -> Gdk.Texture:
+    cache_key = (icon_key, dark, size)
     texture = _texture_cache.get(cache_key)
     if texture is None:
-        texture = Gdk.Texture.new_for_pixbuf(_load_pixbuf(icon_key, dark))
+        texture = Gdk.Texture.new_for_pixbuf(_load_pixbuf(icon_key, dark, size))
         _texture_cache[cache_key] = texture
     return texture
 
@@ -104,24 +110,25 @@ def _tint_pixbuf(pixbuf: GdkPixbuf.Pixbuf, hex_color: str) -> GdkPixbuf.Pixbuf:
     return Gdk.pixbuf_get_from_surface(surface, 0, 0, width, height)
 
 
-def _get_tinted_texture(icon_key: str, hex_color: str) -> Gdk.Texture:
-    cache_key = (icon_key, hex_color)
+def _get_tinted_texture(icon_key: str, hex_color: str, size: int) -> Gdk.Texture:
+    cache_key = (icon_key, hex_color, size)
     texture = _tinted_texture_cache.get(cache_key)
     if texture is None:
         # Either variant's silhouette works as the tint source — light
         # and dark only differ in baked-in ink color, not shape.
-        pixbuf = _tint_pixbuf(_load_pixbuf(icon_key, dark=False), hex_color)
+        pixbuf = _tint_pixbuf(_load_pixbuf(icon_key, dark=False, size=size), hex_color)
         texture = Gdk.Texture.new_for_pixbuf(pixbuf)
         _tinted_texture_cache[cache_key] = texture
     return texture
 
 
-def _lookup_system_icon(icon_key: str) -> Gtk.IconPaintable | None:
+def _lookup_system_icon(icon_key: str, size: int) -> Gtk.IconPaintable | None:
     """The host icon theme's take on `icon_key`, or None if it doesn't
     have that name (or there's no display to ask). Only called when the
     "use system icon theme" switch is on."""
-    if icon_key in _system_icon_cache:
-        return _system_icon_cache[icon_key]
+    cache_key = (icon_key, size)
+    if cache_key in _system_icon_cache:
+        return _system_icon_cache[cache_key]
     icon_name = _SYSTEM_ICON_NAME_MAP.get(icon_key)
     paintable = None
     display = Gdk.Display.get_default()
@@ -131,48 +138,60 @@ def _lookup_system_icon(icon_key: str) -> Gtk.IconPaintable | None:
             paintable = icon_theme.lookup_icon(
                 icon_name,
                 [],
-                ICON_DISPLAY_SIZE,
+                size,
                 1,
                 Gtk.TextDirection.NONE,
                 Gtk.IconLookupFlags.FORCE_REGULAR,
             )
-    _system_icon_cache[icon_key] = paintable
+    _system_icon_cache[cache_key] = paintable
     return paintable
 
 
-def _build_image(paintable: Gdk.Paintable) -> Gtk.Widget:
+def _build_image(paintable: Gdk.Paintable, size: int) -> Gtk.Widget:
     image = Gtk.Image.new_from_paintable(paintable)
-    image.set_size_request(ICON_DISPLAY_SIZE, ICON_DISPLAY_SIZE)
+    # set_size_request alone is not enough — it only sets a layout-
+    # allocation minimum, while Gtk.Image still measures (and draws) the
+    # paintable at whatever size it judges natural on its own, which for
+    # every icon_key here happens to already equal `size` (each texture
+    # is pre-rendered/pre-scaled at exactly that resolution — see
+    # _load_pixbuf) except when it doesn't: confirmed empirically that a
+    # bare Gtk.Image can still render a same-sized texture far smaller
+    # than requested. set_pixel_size is the actual "render at this size"
+    # knob, so both are set to be safe.
+    image.set_size_request(size, size)
+    image.set_pixel_size(size)
     return image
 
 
-def build_icon_image(icon_key: str) -> Gtk.Widget:
-    """A fixed-size Gtk.Image for `icon_key`. Uses the host icon theme's
-    icon when the user opted into that (see module docstring) and it has
-    one; otherwise whichever of the two shipped variants matches the
-    app's current light/dark style. Used for plain single-tone icons —
-    file types, and header-bar/sidebar/action icons alike; see
+def build_icon_image(icon_key: str, size: int = ICON_DISPLAY_SIZE) -> Gtk.Widget:
+    """A fixed-size Gtk.Image for `icon_key`, ICON_DISPLAY_SIZE (16px,
+    the column-row size) unless `size` says otherwise — GridPage's tiles
+    ask for their own, user-chosen size. Uses the host icon theme's icon
+    when the user opted into that (see module docstring) and it has one;
+    otherwise whichever of the two shipped variants matches the app's
+    current light/dark style. Used for plain single-tone icons — file
+    types, and header-bar/sidebar/action icons alike; see
     build_folder_icon_image for the one icon that also needs an
     arbitrary runtime tint."""
     if UserSettingsEntity().use_system_icon_theme:
-        system_paintable = _lookup_system_icon(icon_key)
+        system_paintable = _lookup_system_icon(icon_key, size)
         if system_paintable is not None:
-            return _build_image(system_paintable)
+            return _build_image(system_paintable, size)
     dark = Adw.StyleManager.get_default().get_dark()
-    return _build_image(_get_texture(icon_key, dark))
+    return _build_image(_get_texture(icon_key, dark, size), size)
 
 
-def build_folder_icon_image(color: str | None) -> Gtk.Widget:
+def build_folder_icon_image(color: str | None, size: int = ICON_DISPLAY_SIZE) -> Gtk.Widget:
     """The folder icon, recolored to `color` if a Nemo "Folder Color" tag
     is set on it — otherwise the plain light/dark folder icon, same as
     build_file_icon_image. A colored tag always wins over the system
     theme: recoloring an arbitrary system folder icon isn't supported,
     only our own baked one (see _tint_pixbuf)."""
     if color:
-        return _build_image(_get_tinted_texture(_FOLDER_ICON_KEY, color))
+        return _build_image(_get_tinted_texture(_FOLDER_ICON_KEY, color, size), size)
     if UserSettingsEntity().use_system_icon_theme:
-        system_paintable = _lookup_system_icon(_FOLDER_ICON_KEY)
+        system_paintable = _lookup_system_icon(_FOLDER_ICON_KEY, size)
         if system_paintable is not None:
-            return _build_image(system_paintable)
+            return _build_image(system_paintable, size)
     dark = Adw.StyleManager.get_default().get_dark()
-    return _build_image(_get_texture(_FOLDER_ICON_KEY, dark))
+    return _build_image(_get_texture(_FOLDER_ICON_KEY, dark, size), size)

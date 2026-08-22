@@ -12,10 +12,13 @@ from domain.conf.app_version_conf import APP_VERSION
 from domain.entity.user_settings_entity import UserSettingsEntity
 from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
+from infrastructure.ui.details_page import DetailsPage
+from infrastructure.ui.grid_page import GridPage
 from infrastructure.ui.menu.parameters_dialog import ParametersDialog
 from infrastructure.ui.path_page import PathPage
 from infrastructure.ui.shared.file_icons import build_icon_image
 from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShared
+from infrastructure.ui.shared.view_mode_switcher import ViewModeSwitcher
 from infrastructure.ui.trash_page import TrashPage
 
 APP_ID = "org.dupot.filebrowser"
@@ -37,6 +40,11 @@ class MainWindow(Adw.ApplicationWindow):
         # this coalesces a burst of resize events into one write, a
         # moment after the user stops moving the pointer.
         self._save_window_size_source_id: int | None = None
+        # Debounce id for _on_grid_icon_size_changed — same reasoning:
+        # ViewModeSwitcher's slider fires "value-changed" continuously
+        # while dragged, and rebuilding every grid tile plus saving to
+        # disk on each one of those would be wasteful and stuttery.
+        self._grid_icon_size_source_id: int | None = None
         self.connect("notify::default-width", self._on_window_size_changed)
         self.connect("notify::default-height", self._on_window_size_changed)
         self.connect("close-request", self._on_close_request)
@@ -85,6 +93,11 @@ class MainWindow(Adw.ApplicationWindow):
         #self._dark_mode_button.connect("clicked", self._on_toggle_dark_mode)
         #header_bar.pack_end(self._dark_mode_button)
 
+        self._view_mode_switcher = ViewModeSwitcher(
+            self._settings, self._on_view_mode_changed, self._on_grid_icon_size_changed
+        )
+        header_bar.pack_end(self._view_mode_switcher)
+
         menu = Gio.Menu()
         menu.append(_("Parameters"), "win.parameters")
         menu.append(_("About"), "win.about")
@@ -122,15 +135,41 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self._path_page.set_hexpand(True)
 
+        # Same current-folder callbacks as PathPage — both are just
+        # different presentations of "the browser" (see ViewModeSwitcher);
+        # whichever is on screen drives the same path/favorites/clipboard
+        # state in MainWindow.
+        self._grid_page = GridPage(
+            self._on_path_changed,
+            self._refresh_side_menu,
+            self._on_file_copied,
+            self._on_file_cut,
+        )
+        self._grid_page.set_hexpand(True)
+
+        # Same current-folder callbacks again — the sortable details
+        # table is just a third presentation of "the browser" (see
+        # ViewModeSwitcher).
+        self._details_page = DetailsPage(
+            self._on_path_changed,
+            self._refresh_side_menu,
+            self._on_file_copied,
+            self._on_file_cut,
+        )
+        self._details_page.set_hexpand(True)
+
         self._trash_page = TrashPage(self._system_api)
         self._trash_page.set_hexpand(True)
 
-        # Switched between the Miller-column browser and the flat Trash
-        # list — they're different enough UI paradigms (see TrashPage)
-        # that reusing PathPage's columns for the Trash wouldn't work.
+        # Switched between the Miller-column browser, the icon/thumbnail
+        # grid, the sortable details table, and the flat Trash list —
+        # Trash is different enough as a UI paradigm (see TrashPage) that
+        # reusing any browser view for it wouldn't work.
         self._main_stack = Gtk.Stack()
         self._main_stack.set_hexpand(True)
         self._main_stack.add_named(self._path_page, "browser")
+        self._main_stack.add_named(self._grid_page, "grid")
+        self._main_stack.add_named(self._details_page, "details")
         self._main_stack.add_named(self._trash_page, "trash")
 
         body.append(sidebar_scroll)
@@ -177,6 +216,11 @@ class MainWindow(Adw.ApplicationWindow):
         if self._save_window_size_source_id is not None:
             GLib.source_remove(self._save_window_size_source_id)
             self._save_window_size()
+        # Same idea for a grid icon-size drag immediately followed by
+        # closing the window.
+        if self._grid_icon_size_source_id is not None:
+            GLib.source_remove(self._grid_icon_size_source_id)
+            UserSettingsApi(self._system_api).save()
         return False  # don't block the close
 
     def _on_style_dark_changed(self, _style_manager, _pspec):
@@ -395,9 +439,9 @@ class MainWindow(Adw.ApplicationWindow):
             self._paste_queue.pop(0)
         self._update_paste_button()
         if returncode == 0:
-            self._path_page.refresh_path(os.path.dirname(destination))
+            self._active_browser_page().refresh_path(os.path.dirname(destination))
             if is_cut:
-                self._path_page.refresh_path(os.path.dirname(source))
+                self._active_browser_page().refresh_path(os.path.dirname(source))
         else:
             self._show_copy_error(source, output, is_cut)
         self._process_next_paste_job()
@@ -417,13 +461,38 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.add_response("ok", _("OK"))
         dialog.present(self)
 
+    def _browser_view_name(self) -> str:
+        """Which _main_stack page is "the browser" right now — the
+        Miller-column PathPage, the icon/thumbnail GridPage, or the
+        sortable DetailsPage — per UserSettingsEntity.view_mode (see
+        ViewModeSwitcher)."""
+        if self._settings.use_grid_view():
+            return "grid"
+        if self._settings.use_details_view():
+            return "details"
+        return "browser"
+
+    def _active_browser_page(self):
+        if self._settings.use_grid_view():
+            return self._grid_page
+        if self._settings.use_details_view():
+            return self._details_page
+        return self._path_page
+
+    def _uses_single_folder_view(self) -> bool:
+        """True for the two "one folder in place" views (grid, details),
+        false for PathPage's Miller-column chain — several call sites
+        below branch on exactly this distinction."""
+        return self._settings.use_grid_view() or self._settings.use_details_view()
+
     def _go_to_path(self, path: str):
         """Full reset: used for sidebar navigation and the initial load,
-        collapses back down to a single Miller column showing `path`."""
-        self._main_stack.set_visible_child_name("browser")
+        collapses back down to a single Miller column (or, in grid mode,
+        just the one folder) showing `path`."""
+        self._main_stack.set_visible_child_name(self._browser_view_name())
         self._path_entry.set_sensitive(True)
         self._update_path_state(path)
-        self._path_page.load_path(path)
+        self._active_browser_page().load_path(path)
 
     def _go_to_trash(self, _path: str):
         """Sidebar "Trash" entry: swaps the browser out for TrashPage
@@ -450,15 +519,28 @@ class MainWindow(Adw.ApplicationWindow):
         self._side_menu.set_selected_path(path)
 
     def _on_up_clicked(self, _button):
-        # Reveals the enclosing folder as a new leftmost column; never
-        # drops any column that's already open (see PathPage.prepend_parent).
-        self._path_page.prepend_parent()
+        if self._uses_single_folder_view():
+            # No columns to preserve here — just navigate the one folder
+            # up, same as clicking a folder in the grid/details view
+            # navigates down.
+            parent_path = self._system_api.get_parent_dir(self._current_path)
+            if parent_path != self._current_path:
+                self._update_path_state(parent_path)
+                self._active_browser_page().load_path(parent_path)
+        else:
+            # Reveals the enclosing folder as a new leftmost column; never
+            # drops any column that's already open (see
+            # PathPage.prepend_parent).
+            self._path_page.prepend_parent()
 
     def _on_path_entry_activate(self, entry):
         path = entry.get_text().strip()
         if path and self._system_api.is_dir(path):
             self._update_path_state(path)
-            self._path_page.load_path_chain(path)
+            if self._uses_single_folder_view():
+                self._active_browser_page().load_path(path)
+            else:
+                self._path_page.load_path_chain(path)
         else:
             entry.add_css_class("error")
 
@@ -498,7 +580,36 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_settings_saved(self, hidden_files_changed=False):
         self._apply_theme()
         if hidden_files_changed:
-            self._path_page.refresh_hidden_files()
+            self._active_browser_page().refresh_hidden_files()
+
+    def _on_view_mode_changed(self, mode: str):
+        """ViewModeSwitcher already updated the in-memory
+        UserSettingsEntity singleton — this just persists it and swaps
+        _main_stack, loading the newly-active page fresh (see
+        _browser_view_name) so it can't show whatever it had on screen
+        the last time it was visible, however stale."""
+        UserSettingsApi(self._system_api).save()
+        self._main_stack.set_visible_child_name(self._browser_view_name())
+        if mode in (UserSettingsEntity.VIEW_MODE_GRID, UserSettingsEntity.VIEW_MODE_DETAILS):
+            self._active_browser_page().load_path(self._current_path)
+        else:
+            # Rebuilds the ancestor chain rather than a single column —
+            # nicer to land on when coming from a single-folder view,
+            # same as typing a path into the entry does.
+            self._path_page.load_path_chain(self._current_path)
+
+    def _on_grid_icon_size_changed(self, size: int):
+        if self._grid_icon_size_source_id is not None:
+            GLib.source_remove(self._grid_icon_size_source_id)
+        self._grid_icon_size_source_id = GLib.timeout_add(
+            150, self._apply_grid_icon_size, size
+        )
+
+    def _apply_grid_icon_size(self, size: int) -> bool:
+        self._grid_icon_size_source_id = None
+        self._grid_page.set_icon_size(size)
+        UserSettingsApi(self._system_api).save()
+        return GLib.SOURCE_REMOVE
 
     def _on_menu_about(self, _action, _param):
         about = Adw.AboutDialog.new()

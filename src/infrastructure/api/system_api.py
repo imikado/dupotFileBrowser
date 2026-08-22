@@ -141,7 +141,23 @@ class SystemApi(SystemApiContract):
                         is_dir = entry.is_dir(follow_symlinks=True)
                     except OSError:
                         is_dir = False
-                    entry_list.append(FileEntryEntity(entry.name, entry.path, is_dir))
+                    # Cheap here — os.scandir's DirEntry caches this stat
+                    # call on most platforms — unlike a directory's total
+                    # size, which needs a full tree walk (see
+                    # get_dir_size) and stays an explicit, on-demand-only
+                    # call instead of something every listing pays for.
+                    size = None
+                    mtime = None
+                    try:
+                        stat_result = entry.stat(follow_symlinks=True)
+                        mtime = stat_result.st_mtime
+                        if not is_dir:
+                            size = stat_result.st_size
+                    except OSError:
+                        pass
+                    entry_list.append(
+                        FileEntryEntity(entry.name, entry.path, is_dir, size, mtime)
+                    )
         except OSError:
             pass
         return entry_list

@@ -82,15 +82,49 @@ _EXTENSION_ICON_MAP = {
 
 _DEFAULT_ICON_KEY = "generic"
 
+# icon_key -> human-readable type label, for DetailsPage's "Type" column.
+# Deliberately reuses the same coarse extension grouping as the icon
+# lookup above rather than querying Gio's content-type machinery
+# per-entry (see SystemApi.get_content_type) — that's precise enough for
+# the Properties dialog's single file, but calling it once per row would
+# add real I/O to every folder listing just to populate a column.
+_ICON_KEY_TYPE_LABEL = {
+    "image": lambda: _("Image"),
+    "audio": lambda: _("Audio"),
+    "video": lambda: _("Video"),
+    "archive": lambda: _("Archive"),
+    "document": lambda: _("Document"),
+    "spreadsheet": lambda: _("Spreadsheet"),
+    "presentation": lambda: _("Presentation"),
+    "font": lambda: _("Font"),
+    "executable": lambda: _("Executable"),
+}
+
 
 class FileEntryEntity:
     """A single file or directory entry, mirroring the Flutter app's use
     of dart:io's FileSystemEntity in PathView."""
 
-    def __init__(self, name: str, path: str, is_dir: bool):
+    def __init__(
+        self,
+        name: str,
+        path: str,
+        is_dir: bool,
+        size: int | None = None,
+        mtime: float | None = None,
+    ):
         self.name = name
         self.path = path
         self.is_dir = is_dir
+        # Populated by SystemApi.list_dir from the same os.scandir() stat
+        # call that already resolves is_dir — free to grab there, unlike
+        # a directory's total size (see SystemApi.get_dir_size), which
+        # walks the whole tree and stays an explicit, on-demand-only call.
+        # None for a directory (DetailsPage shows a blank Size cell) or
+        # when the stat itself failed (a broken symlink, a race with
+        # deletion).
+        self.size = size
+        self.mtime = mtime
 
     def get_display_name(self) -> str:
         return f"{self.name}/" if self.is_dir else self.name
@@ -104,3 +138,24 @@ class FileEntryEntity:
         if not dot:
             return _DEFAULT_ICON_KEY
         return _EXTENSION_ICON_MAP.get(extension.lower(), _DEFAULT_ICON_KEY)
+
+    def get_type_label(self) -> str:
+        """Human-readable type, for DetailsPage's "Type" column — e.g.
+        "Folder", "Image", "PDF File". Lazily translated (called at
+        display time, not import time) so a language switch is picked up
+        without restarting."""
+        if self.is_dir:
+            return _("Folder")
+        key = self.get_icon_key()
+        label_builder = _ICON_KEY_TYPE_LABEL.get(key)
+        if label_builder is not None:
+            return label_builder()
+        # Not "_, dot, extension" — this function also calls the gettext
+        # "_" above, and Python scopes an assigned name as local for the
+        # whole function, so reusing "_" here would shadow gettext's and
+        # crash the self.is_dir branch's return _("Folder") above with
+        # UnboundLocalError.
+        stem, dot, extension = self.name.rpartition(".")
+        if dot:
+            return _("{extension} File").format(extension=extension.upper())
+        return _("File")

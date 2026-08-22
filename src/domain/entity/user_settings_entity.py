@@ -27,6 +27,19 @@ class UserSettingsEntity:
     FIELD_WINDOW_WIDTH = "windowWidth"
     FIELD_WINDOW_HEIGHT = "windowHeight"
     FIELD_DISPLAY_HIDDEN = "displayHidden"
+    FIELD_VIEW_MODE = "viewMode"
+    FIELD_GRID_ICON_SIZE = "gridIconSize"
+
+    VIEW_MODE_COLUMNS = "columns"
+    VIEW_MODE_GRID = "grid"
+    VIEW_MODE_DETAILS = "details"
+
+    # Clamp range for the grid view's icon-size slider (see
+    # infrastructure/ui/shared/view_mode_switcher.py) — narrow enough
+    # that a thumbnail is still recognizable, wide enough to actually
+    # preview an image.
+    MIN_GRID_ICON_SIZE = 48
+    MAX_GRID_ICON_SIZE = 256
 
     _instance: "UserSettingsEntity | None" = None
 
@@ -35,11 +48,15 @@ class UserSettingsEntity:
     DEFAULT_LANGUAGE = LANGUAGE_SYSTEM
     # Off by default: the host icon theme may not cover every file type
     # (see file_icons.py) — baked icons stay the safe out-of-the-box choice.
-    DEFAULT_USE_SYSTEM_ICON_THEME = False
+    DEFAULT_USE_SYSTEM_ICON_THEME = True
     # Matches MainWindow's previous hardcoded set_default_size(1000, 700).
     DEFAULT_WINDOW_WIDTH = 1000
     DEFAULT_WINDOW_HEIGHT = 700
     DEFAULT_DISPLAY_HIDDEN=False
+    # The Miller-column browser stays the default view — it's the one
+    # existing users already know; grid is opt-in.
+    DEFAULT_VIEW_MODE = VIEW_MODE_COLUMNS
+    DEFAULT_GRID_ICON_SIZE = 96
 
     version: int = DEFAULT_VERSION
     theme: str = DEFAULT_THEME
@@ -48,6 +65,8 @@ class UserSettingsEntity:
     window_width: int = DEFAULT_WINDOW_WIDTH
     window_height: int = DEFAULT_WINDOW_HEIGHT
     display_hidden_files: bool= DEFAULT_DISPLAY_HIDDEN
+    view_mode: str = DEFAULT_VIEW_MODE
+    grid_icon_size: int = DEFAULT_GRID_ICON_SIZE
     # Each item is {"label": <dir name>, "path": <absolute path>}.
     favorite_list: list[dict]
 
@@ -74,6 +93,8 @@ class UserSettingsEntity:
         self.window_width = self.DEFAULT_WINDOW_WIDTH
         self.window_height = self.DEFAULT_WINDOW_HEIGHT
         self.display_hidden_files= self.DEFAULT_DISPLAY_HIDDEN
+        self.view_mode = self.DEFAULT_VIEW_MODE
+        self.grid_icon_size = self.DEFAULT_GRID_ICON_SIZE
         self.favorite_list = []
 
     def load(self, raw_obj: object) -> None:
@@ -86,6 +107,8 @@ class UserSettingsEntity:
         self.window_width = raw_obj.get(self.FIELD_WINDOW_WIDTH, self.DEFAULT_WINDOW_WIDTH)
         self.window_height = raw_obj.get(self.FIELD_WINDOW_HEIGHT, self.DEFAULT_WINDOW_HEIGHT)
         self.display_hidden_files = raw_obj.get(self.FIELD_DISPLAY_HIDDEN, self.DEFAULT_DISPLAY_HIDDEN)
+        self.view_mode = raw_obj.get(self.FIELD_VIEW_MODE, self.DEFAULT_VIEW_MODE)
+        self.grid_icon_size = raw_obj.get(self.FIELD_GRID_ICON_SIZE, self.DEFAULT_GRID_ICON_SIZE)
 
         self.favorite_list = raw_obj.get(self.FIELD_FAVORITE_LIST, [])
 
@@ -99,7 +122,9 @@ class UserSettingsEntity:
                 self.FIELD_WINDOW_WIDTH: self.window_width,
                 self.FIELD_WINDOW_HEIGHT: self.window_height,
                 self.FIELD_FAVORITE_LIST: self.favorite_list,
-                self.FIELD_DISPLAY_HIDDEN: self.display_hidden_files
+                self.FIELD_DISPLAY_HIDDEN: self.display_hidden_files,
+                self.FIELD_VIEW_MODE: self.view_mode,
+                self.FIELD_GRID_ICON_SIZE: self.grid_icon_size,
             }
         )
 
@@ -161,3 +186,18 @@ class UserSettingsEntity:
 
     def set_should_display_hidden(self,display_hidden:bool):
         self.display_hidden_files=display_hidden
+
+    def use_grid_view(self) -> bool:
+        return self.view_mode == self.VIEW_MODE_GRID
+
+    def use_details_view(self) -> bool:
+        return self.view_mode == self.VIEW_MODE_DETAILS
+
+    def set_view_mode(self, view_mode: str) -> None:
+        self.view_mode = view_mode
+
+    def get_grid_icon_size(self) -> int:
+        return self.grid_icon_size
+
+    def set_grid_icon_size(self, size: int) -> None:
+        self.grid_icon_size = max(self.MIN_GRID_ICON_SIZE, min(self.MAX_GRID_ICON_SIZE, size))
