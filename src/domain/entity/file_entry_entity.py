@@ -100,6 +100,17 @@ _ICON_KEY_TYPE_LABEL = {
     "executable": lambda: _("Executable"),
 }
 
+# Extensions SystemApi.extract_path can actually unpack (shutil's own
+# registered formats: zip, tar, gztar, bztar, xztar) — a subset of
+# _EXTENSION_ICON_MAP's broader "archive" category, which also covers
+# formats we can't extract in-process (7z, rar, deb, rpm, flatpak).
+# Deliberately kept in sync by hand with SystemApi.compress_path's own
+# _ARCHIVE_EXTENSIONS rather than imported from there — this is domain
+# code, infrastructure/api/system_api.py isn't something it should
+# depend on. Longest first so ".tar.gz" matches whole instead of via a
+# shorter suffix.
+_EXTRACTABLE_ARCHIVE_EXTENSIONS = (".tar.gz", ".tar.bz2", ".tar.xz", ".tar", ".zip")
+
 
 class FileEntryEntity:
     """A single file or directory entry, mirroring the Flutter app's use
@@ -138,6 +149,15 @@ class FileEntryEntity:
         if not dot:
             return _DEFAULT_ICON_KEY
         return _EXTENSION_ICON_MAP.get(extension.lower(), _DEFAULT_ICON_KEY)
+
+    def is_extractable_archive(self) -> bool:
+        """Whether this file's extension is one SystemApi.extract_path
+        can actually unpack — gates the "Extract Here" context menu
+        entry (see _EXTRACTABLE_ARCHIVE_EXTENSIONS)."""
+        if self.is_dir:
+            return False
+        lowered_name = self.name.lower()
+        return any(lowered_name.endswith(ext) for ext in _EXTRACTABLE_ARCHIVE_EXTENSIONS)
 
     def get_type_label(self) -> str:
         """Human-readable type, for DetailsPage's "Type" column — e.g.

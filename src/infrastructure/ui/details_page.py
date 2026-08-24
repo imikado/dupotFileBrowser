@@ -63,6 +63,7 @@ class DetailsPage(Gtk.Box):
         on_file_copied=lambda name, path: None,
         on_file_cut=lambda name, path: None,
         on_compress_requested=lambda path, destination, archive_format: None,
+        on_extract_requested=lambda path: None,
     ):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._on_path_changed = on_path_changed
@@ -70,6 +71,7 @@ class DetailsPage(Gtk.Box):
         self._on_file_copied = on_file_copied
         self._on_file_cut = on_file_cut
         self._on_compress_requested = on_compress_requested
+        self._on_extract_requested = on_extract_requested
         self._system_api = SystemApi()
         self._list_directory_uc = ListDirectoryUc(self._system_api)
         self._current_path: str | None = None
@@ -341,6 +343,14 @@ class DetailsPage(Gtk.Box):
                 ContextMenuItem(
                     _("Use as Wallpaper"),
                     lambda: self._set_wallpaper(entry.path, anchor.get_root()),
+                )
+            )
+
+        if not entry.is_dir and entry.is_extractable_archive():
+            item_list.append(
+                ContextMenuItem(
+                    _("Extract"),
+                    lambda: self._on_extract_requested(entry.path),
                 )
             )
 

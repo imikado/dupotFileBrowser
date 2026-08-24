@@ -88,6 +88,14 @@ class SystemApiContract(ABC):
         pass
 
     @abstractmethod
+    def extract_path(self, source: str, destination_dir: str) -> str | None:
+        pass
+
+    @abstractmethod
+    def get_archive_base_name(self, path: str) -> str:
+        pass
+
+    @abstractmethod
     def get_trash_dir(self) -> str:
         pass
 

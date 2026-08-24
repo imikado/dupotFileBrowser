@@ -580,6 +580,39 @@ class SystemApi(SystemApiContract):
         except (OSError, ValueError) as error:
             return str(error)
 
+    def extract_path(self, source: str, destination_dir: str) -> str | None:
+        """Extracts the archive at `source` into `destination_dir` (the
+        caller — MainWindow._on_extract_requested — picks that name,
+        defaulting to the archive's own base name via
+        get_archive_base_name and prompting for a new one on a
+        collision, same as a paste job) using Python's own zipfile/
+        tarfile modules via shutil.unpack_archive, the inverse of
+        compress_path. Format is auto-detected from source's extension
+        (shutil.unpack_archive's own registered formats —
+        zip/tar/gztar/bztar/xztar — matching exactly what compress_path
+        can produce, and what FileEntryEntity.is_extractable_archive()
+        checks for before showing the "Extract" context menu entry).
+        destination_dir is created if it doesn't already exist. None on
+        success, error text on failure (including an unrecognized
+        extension)."""
+        try:
+            shutil.unpack_archive(source, destination_dir)
+            return None
+        except (OSError, ValueError) as error:
+            return str(error)
+
+    def get_archive_base_name(self, path: str) -> str:
+        """`path`'s filename with its archive extension stripped — e.g.
+        "my_folder.tar.gz" -> "my_folder" — the default name
+        _on_extract_requested extracts an archive into. Falls back to
+        the plain filename (extension included) if it doesn't end in one
+        of extract_path's recognized extensions."""
+        name = os.path.basename(path.rstrip("/"))
+        for extension in self._ARCHIVE_EXTENSIONS:
+            if name.endswith(extension):
+                return name[: -len(extension)]
+        return name
+
     def _get_real_trash_base_dir(self) -> str:
         # Deliberately NOT GLib.get_user_data_dir(): under Flatpak that
         # resolves $XDG_DATA_HOME, which Flatpak always redirects to the

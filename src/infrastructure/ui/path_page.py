@@ -204,6 +204,7 @@ class PathPage(Gtk.Box):
         on_file_copied=lambda name, path: None,
         on_file_cut=lambda name, path: None,
         on_compress_requested=lambda path, destination, archive_format: None,
+        on_extract_requested=lambda path: None,
     ):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL)
         self._on_path_changed = on_path_changed
@@ -211,6 +212,7 @@ class PathPage(Gtk.Box):
         self._on_file_copied = on_file_copied
         self._on_file_cut = on_file_cut
         self._on_compress_requested = on_compress_requested
+        self._on_extract_requested = on_extract_requested
         # Absolute path of the last file/folder sent to the clipboard via
         # the "Copy" context menu entry (not "Cut" — see _copy_to_clipboard).
         self._last_copied_path: str | None = None
@@ -415,6 +417,14 @@ class PathPage(Gtk.Box):
                 ContextMenuItem(
                     _("Use as Wallpaper"),
                     lambda: self._set_wallpaper(entry.path, row.get_root()),
+                )
+            )
+
+        if not entry.is_dir and entry.is_extractable_archive():
+            item_list.append(
+                ContextMenuItem(
+                    _("Extract"),
+                    lambda: self._on_extract_requested(entry.path),
                 )
             )
 

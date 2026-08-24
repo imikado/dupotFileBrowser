@@ -26,14 +26,23 @@ APP_ID = "org.dupot.filebrowser"
 
 class _FileOpJob:
     """One queued background filesystem operation — a copy/move (from
-    the paste button) or a compress (from a folder's "Compress…" context
-    menu entry). All three share the same one-at-a-time queue (see
-    MainWindow._job_queue) so a slow compress on a big folder can't run
-    concurrently with, and fight over disk I/O with, a paste job, or vice
-    versa — and so both surface through the same pending-count badge."""
+    the paste button), a compress (from a folder's "Compress…" context
+    menu entry), or an extract (from an archive's "Extract" entry). All
+    four share the same one-at-a-time queue (see MainWindow._job_queue)
+    so a slow compress/extract on a big folder/archive can't run
+    concurrently with, and fight over disk I/O with, a paste job, or
+    vice versa — and so all surface through the same pending-count
+    badge.
+
+    `destination` means different things per kind: the new archive's own
+    path for "compress" (a file, alongside source), the extraction
+    target *directory* for "extract" (a new folder named after the
+    archive, in its own parent — see MainWindow._on_extract_requested,
+    which already resolved any name collision before enqueuing), and the
+    copied/moved-to path for "copy"/"move"."""
 
     def __init__(self, kind: str, source: str, destination: str, archive_format: str | None = None):
-        self.kind = kind  # "copy" | "move" | "compress"
+        self.kind = kind  # "copy" | "move" | "compress" | "extract"
         self.source = source
         self.destination = destination
         self.archive_format = archive_format  # only set for kind == "compress"
@@ -149,6 +158,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._on_file_copied,
             self._on_file_cut,
             self._on_compress_requested,
+            self._on_extract_requested,
         )
         self._path_page.set_hexpand(True)
 
@@ -162,6 +172,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._on_file_copied,
             self._on_file_cut,
             self._on_compress_requested,
+            self._on_extract_requested,
         )
         self._grid_page.set_hexpand(True)
 
@@ -174,6 +185,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._on_file_copied,
             self._on_file_cut,
             self._on_compress_requested,
+            self._on_extract_requested,
         )
         self._details_page.set_hexpand(True)
 
@@ -424,6 +436,56 @@ class MainWindow(Adw.ApplicationWindow):
         a large folder (see _FileOpJob)."""
         self._enqueue_job(_FileOpJob("compress", path, destination, archive_format))
 
+    def _on_extract_requested(self, path: str):
+        """Called by an archive's "Extract" context menu entry — extracts
+        into a new folder named after the archive (its own base name,
+        extension stripped) in the archive's own parent, asking for a
+        new name first if that folder's already taken (same collision
+        flow as a paste job — see _ask_extract_name) rather than
+        overwriting whatever's already there."""
+        parent = self._system_api.get_parent_dir(path)
+        base_name = self._system_api.get_archive_base_name(path)
+        destination = os.path.join(parent, base_name)
+        if self._system_api.file_exists(destination):
+            self._ask_extract_name(path, base_name, parent)
+        else:
+            self._enqueue_job(_FileOpJob("extract", path, destination))
+
+    def _ask_extract_name(self, path: str, taken_name: str, parent: str):
+        entry = Gtk.Entry()
+        entry.set_text(taken_name)
+        entry.set_activates_default(True)
+
+        dialog = Adw.AlertDialog(
+            heading=_("Folder already exists"),
+            body=_(
+                '"{name}" already exists in this folder. Choose a name for the '
+                "extracted folder."
+            ).format(name=taken_name),
+        )
+        dialog.set_extra_child(entry)
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("extract", _("Extract"))
+        dialog.set_default_response("extract")
+        dialog.set_close_response("cancel")
+        dialog.set_response_appearance("extract", Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(_dialog, response):
+            if response != "extract":
+                return
+            new_name = entry.get_text().strip()
+            if not new_name:
+                return
+            destination = os.path.join(parent, new_name)
+            if self._system_api.file_exists(destination):
+                # Still taken: ask again instead of silently overwriting.
+                GLib.idle_add(self._ask_extract_name, path, new_name, parent)
+                return
+            self._enqueue_job(_FileOpJob("extract", path, destination))
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+
     def _enqueue_job(self, job: _FileOpJob):
         was_idle = not self._job_queue
         self._job_queue.append(job)
@@ -440,15 +502,17 @@ class MainWindow(Adw.ApplicationWindow):
         threading.Thread(target=self._run_job, args=(self._job_queue[0],), daemon=True).start()
 
     def _run_job(self, job: _FileOpJob):
-        # copy_path()/move_path()/compress_path() all run in-process
-        # (shutil) — no host subprocess needed, --filesystem=host already
-        # gives direct access to source and destination alike. Still off
-        # the main thread since any of the three can be slow on a big
-        # folder.
+        # copy_path()/move_path()/compress_path()/extract_path() all run
+        # in-process (shutil) — no host subprocess needed,
+        # --filesystem=host already gives direct access to source and
+        # destination alike. Still off the main thread since any of the
+        # four can be slow on a big folder/archive.
         if job.kind == "move":
             error = self._system_api.move_path(job.source, job.destination)
         elif job.kind == "compress":
             error = self._system_api.compress_path(job.source, job.destination, job.archive_format)
+        elif job.kind == "extract":
+            error = self._system_api.extract_path(job.source, job.destination)
         else:
             error = self._system_api.copy_path(job.source, job.destination)
         GLib.idle_add(self._on_job_done, job, error)
@@ -458,7 +522,14 @@ class MainWindow(Adw.ApplicationWindow):
             self._job_queue.pop(0)
         self._update_paste_button()
         if error is None:
-            self._active_browser_page().refresh_path(os.path.dirname(job.destination))
+            # For "extract", destination is already the folder to
+            # refresh (its own parent — see _on_extract_requested); every
+            # other kind's destination is a *file* path, so the folder to
+            # refresh is its dirname.
+            refresh_target = (
+                job.destination if job.kind == "extract" else os.path.dirname(job.destination)
+            )
+            self._active_browser_page().refresh_path(refresh_target)
             if job.kind == "move":
                 self._active_browser_page().refresh_path(os.path.dirname(job.source))
         else:
@@ -474,6 +545,9 @@ class MainWindow(Adw.ApplicationWindow):
         elif job.kind == "compress":
             heading = _("Compression failed")
             body = _('Could not compress "{name}".').format(name=name)
+        elif job.kind == "extract":
+            heading = _("Extraction failed")
+            body = _('Could not extract "{name}".').format(name=name)
         else:
             heading = _("Copy failed")
             body = _('Could not copy "{name}" to this folder.').format(name=name)

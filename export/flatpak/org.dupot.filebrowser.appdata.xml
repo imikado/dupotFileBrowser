@@ -53,6 +53,15 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+
+    <release date="2026-08-24" version="1.0.23">
+      <description>
+        <ul>
+          <li>Add in context menu: feature to extract archive</li>
+        </ul>
+      </description>
+    </release>
+
     <release date="2026-08-22" version="1.0.22">
       <description>
         <ul>
