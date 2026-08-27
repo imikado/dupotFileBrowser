@@ -54,6 +54,15 @@
 
   <releases>
 
+    <release date="2026-08-27" version="1.0.25">
+      <description>
+        <ul>
+          <li>Add new permission to allow filebrowser</li>
+        </ul>
+      </description>
+    </release>
+
+
     <release date="2026-08-27" version="1.0.24">
       <description>
         <ul>
