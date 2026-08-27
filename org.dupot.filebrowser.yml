@@ -5,7 +5,10 @@ sdk: org.gnome.Sdk
 command: dupot_file_browser
 
 finish-args:
-  - --filesystem=host-root
+  - --filesystem=host
+  - --filesystem=/tmp
+  - --filesystem=/var
+  - --filesystem=/sys
   - --talk-name=org.freedesktop.portal.Desktop
   - --talk-name=org.freedesktop.portal.OpenURI
   - --talk-name=org.freedesktop.Flatpak

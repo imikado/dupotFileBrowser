@@ -60,6 +60,12 @@ class MainWindow(Adw.ApplicationWindow):
             and self._system_api.is_dir("/run/host/etc")
             else None
         )
+        self._host_usr_path = (
+            "/run/host/usr"
+            if self._system_api.is_running_flatpak()
+            and self._system_api.is_dir("/run/host/usr")
+            else None
+        )
 
         toolbar_view = Adw.ToolbarView()
 
@@ -221,6 +227,10 @@ class MainWindow(Adw.ApplicationWindow):
         if self._host_etc_path is not None:
             items.append(
                 SideMenuItem("folder", _("Host /etc"), self._host_etc_path, self._go_to_path)
+            )
+        if self._host_usr_path is not None:
+            items.append(
+                SideMenuItem("folder", _("Host /usr"), self._host_usr_path, self._go_to_path)
             )
         if self._settings.favorite_list:
             items.append(None)  # separator between Home and the favorites

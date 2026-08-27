@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-27 14:02+0200\n"
+"POT-Creation-Date: 2026-08-27 23:32+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -77,136 +77,140 @@ msgid ""
 "— install one of these to extract .rar archives)."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:56
-#: src/infrastructure/ui/app_window.py:739
+#: src/infrastructure/ui/app_window.py:41
+#: src/infrastructure/ui/app_window.py:606
 msgid "File browser"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:101
+#: src/infrastructure/ui/app_window.py:77
 msgid "Parent folder"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:108
+#: src/infrastructure/ui/app_window.py:84
 msgid "Type a path and press Enter to go there"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:142
+#: src/infrastructure/ui/app_window.py:104
 #: src/infrastructure/ui/menu/parameters_dialog.py:19
 msgid "Parameters"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:143
+#: src/infrastructure/ui/app_window.py:105
 msgid "About"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:283
+#: src/infrastructure/ui/app_window.py:221
 msgid "Home"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:286
-#: src/infrastructure/ui/app_window.py:618
+#: src/infrastructure/ui/app_window.py:224
+#: src/infrastructure/ui/app_window.py:517
 #: src/infrastructure/ui/trash_page.py:32
 msgid "Trash"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:291
+#: src/infrastructure/ui/app_window.py:229
 msgid "Host /etc"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:365
+#: src/infrastructure/ui/app_window.py:233
+msgid "Host /usr"
+msgstr ""
+
+#: src/infrastructure/ui/app_window.py:304
 msgid "Move file"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:365
+#: src/infrastructure/ui/app_window.py:304
 msgid "Paste the file"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:390
+#: src/infrastructure/ui/app_window.py:329
 #, python-brace-format
 msgid "{count} pending"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:421
+#: src/infrastructure/ui/app_window.py:356
 msgid "File already exists"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:423
+#: src/infrastructure/ui/app_window.py:358
 #, python-brace-format
 msgid "\"{name}\" already exists in this folder. Choose a new name."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:427
-#: src/infrastructure/ui/app_window.py:486
-#: src/infrastructure/ui/shared/compress_dialog.py:60
+#: src/infrastructure/ui/app_window.py:362
+#: src/infrastructure/ui/app_window.py:410
+#: src/infrastructure/ui/shared/compress_dialog.py:51
 #: src/infrastructure/ui/shared/confirm_dialog.py:14
 #: src/infrastructure/ui/shared/open_with_popup.py:90
 #: src/infrastructure/ui/shared/rename_dialog.py:33
 msgid "Cancel"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:428
+#: src/infrastructure/ui/app_window.py:363
 msgid "Move"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:428
+#: src/infrastructure/ui/app_window.py:363
 msgid "Paste"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:479
+#: src/infrastructure/ui/app_window.py:403
 msgid "Folder already exists"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:481
+#: src/infrastructure/ui/app_window.py:405
 #, python-brace-format
 msgid ""
 "\"{name}\" already exists in this folder. Choose a name for the extracted "
 "folder."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:487
+#: src/infrastructure/ui/app_window.py:411
 #: src/infrastructure/ui/details_page.py:352
 #: src/infrastructure/ui/grid_page.py:280
 #: src/infrastructure/ui/path_page.py:426
 msgid "Extract"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:562
+#: src/infrastructure/ui/app_window.py:474
 msgid "Move failed"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:563
+#: src/infrastructure/ui/app_window.py:475
 #, python-brace-format
 msgid "Could not move \"{name}\" to this folder."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:565
+#: src/infrastructure/ui/app_window.py:477
 msgid "Compression failed"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:566
+#: src/infrastructure/ui/app_window.py:478
 #, python-brace-format
 msgid "Could not compress \"{name}\"."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:568
+#: src/infrastructure/ui/app_window.py:480
 msgid "Extraction failed"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:569
+#: src/infrastructure/ui/app_window.py:481
 #, python-brace-format
 msgid "Could not extract \"{name}\"."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:571
+#: src/infrastructure/ui/app_window.py:483
 msgid "Copy failed"
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:572
+#: src/infrastructure/ui/app_window.py:484
 #, python-brace-format
 msgid "Could not copy \"{name}\" to this folder."
 msgstr ""
 
-#: src/infrastructure/ui/app_window.py:576
+#: src/infrastructure/ui/app_window.py:488
 #: src/infrastructure/ui/details_page.py:466
 #: src/infrastructure/ui/details_page.py:506
 #: src/infrastructure/ui/details_page.py:526
@@ -452,12 +456,12 @@ msgstr ""
 msgid "Tar archive (.tar)"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:56
-#: src/infrastructure/ui/shared/compress_dialog.py:61
+#: src/infrastructure/ui/shared/compress_dialog.py:47
+#: src/infrastructure/ui/shared/compress_dialog.py:52
 msgid "Compress"
 msgstr ""
 
-#: src/infrastructure/ui/shared/compress_dialog.py:57
+#: src/infrastructure/ui/shared/compress_dialog.py:48
 #, python-brace-format
 msgid "Choose an archive name and format for \"{name}\"."
 msgstr ""
