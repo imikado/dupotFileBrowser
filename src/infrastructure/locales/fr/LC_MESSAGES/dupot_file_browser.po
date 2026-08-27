@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-24 20:29+0200\n"
+"POT-Creation-Date: 2026-08-27 14:02+0200\n"
 "PO-Revision-Date: 2026-08-16 09:34+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -53,80 +53,93 @@ msgstr "Police"
 msgid "Executable"
 msgstr "Exécutable"
 
-#: src/domain/entity/file_entry_entity.py:168
+#: src/domain/entity/file_entry_entity.py:174
 msgid "Folder"
 msgstr "Dossier"
 
-#: src/domain/entity/file_entry_entity.py:180
+#: src/domain/entity/file_entry_entity.py:186
 #, python-brace-format
 msgid "{extension} File"
 msgstr "Fichier {extension}"
 
-#: src/domain/entity/file_entry_entity.py:181
+#: src/domain/entity/file_entry_entity.py:187
 msgid "File"
 msgstr "Fichier"
 
-#: src/infrastructure/api/system_api.py:449
+#: src/infrastructure/api/system_api.py:470
 #, python-brace-format
 msgid "{count} items"
 msgstr "{count} éléments"
 
+#: src/infrastructure/api/system_api.py:686
+msgid ""
+"No RAR-capable tool was found on this system (tried unrar, 7z, unar, bsdtar "
+"— install one of these to extract .rar archives)."
+msgstr ""
+"Aucun outil capable de traiter les fichiers RAR n'a été trouvé sur ce "
+"système (unrar, 7z, unar, bsdtar essayés — installez l'un d'eux pour "
+"extraire des archives .rar)."
+
 #: src/infrastructure/ui/app_window.py:56
-#: src/infrastructure/ui/app_window.py:720
+#: src/infrastructure/ui/app_window.py:739
 msgid "File browser"
 msgstr "Explorateur de fichiers"
 
-#: src/infrastructure/ui/app_window.py:86
+#: src/infrastructure/ui/app_window.py:101
 msgid "Parent folder"
 msgstr "Dossier parent"
 
-#: src/infrastructure/ui/app_window.py:93
+#: src/infrastructure/ui/app_window.py:108
 msgid "Type a path and press Enter to go there"
 msgstr "Saisissez un chemin et appuyez sur Entrée pour y accéder"
 
-#: src/infrastructure/ui/app_window.py:127
+#: src/infrastructure/ui/app_window.py:142
 #: src/infrastructure/ui/menu/parameters_dialog.py:19
 msgid "Parameters"
 msgstr "Paramètres"
 
-#: src/infrastructure/ui/app_window.py:128
+#: src/infrastructure/ui/app_window.py:143
 msgid "About"
 msgstr "À propos"
 
-#: src/infrastructure/ui/app_window.py:268
+#: src/infrastructure/ui/app_window.py:283
 msgid "Home"
 msgstr "Accueil"
 
-#: src/infrastructure/ui/app_window.py:271
-#: src/infrastructure/ui/app_window.py:599
+#: src/infrastructure/ui/app_window.py:286
+#: src/infrastructure/ui/app_window.py:618
 #: src/infrastructure/ui/trash_page.py:32
 msgid "Trash"
 msgstr "Corbeille"
 
-#: src/infrastructure/ui/app_window.py:346
+#: src/infrastructure/ui/app_window.py:291
+msgid "Host /etc"
+msgstr "/etc de l'hôte"
+
+#: src/infrastructure/ui/app_window.py:365
 msgid "Move file"
 msgstr "Déplacer le fichier"
 
-#: src/infrastructure/ui/app_window.py:346
+#: src/infrastructure/ui/app_window.py:365
 msgid "Paste the file"
 msgstr "Coller le fichier"
 
-#: src/infrastructure/ui/app_window.py:371
+#: src/infrastructure/ui/app_window.py:390
 #, python-brace-format
 msgid "{count} pending"
 msgstr "{count} en attente"
 
-#: src/infrastructure/ui/app_window.py:402
+#: src/infrastructure/ui/app_window.py:421
 msgid "File already exists"
 msgstr "Le fichier existe déjà"
 
-#: src/infrastructure/ui/app_window.py:404
+#: src/infrastructure/ui/app_window.py:423
 #, python-brace-format
 msgid "\"{name}\" already exists in this folder. Choose a new name."
 msgstr "« {name} » existe déjà dans ce dossier. Choisissez un nouveau nom."
 
-#: src/infrastructure/ui/app_window.py:408
-#: src/infrastructure/ui/app_window.py:467
+#: src/infrastructure/ui/app_window.py:427
+#: src/infrastructure/ui/app_window.py:486
 #: src/infrastructure/ui/shared/compress_dialog.py:60
 #: src/infrastructure/ui/shared/confirm_dialog.py:14
 #: src/infrastructure/ui/shared/open_with_popup.py:90
@@ -134,78 +147,80 @@ msgstr "« {name} » existe déjà dans ce dossier. Choisissez un nouveau nom."
 msgid "Cancel"
 msgstr "Annuler"
 
-#: src/infrastructure/ui/app_window.py:409
+#: src/infrastructure/ui/app_window.py:428
 msgid "Move"
 msgstr "Déplacer"
 
-#: src/infrastructure/ui/app_window.py:409
+#: src/infrastructure/ui/app_window.py:428
 msgid "Paste"
 msgstr "Coller"
 
-#: src/infrastructure/ui/app_window.py:460
+#: src/infrastructure/ui/app_window.py:479
 msgid "Folder already exists"
 msgstr "Le dossier existe déjà"
 
-#: src/infrastructure/ui/app_window.py:462
+#: src/infrastructure/ui/app_window.py:481
 #, python-brace-format
 msgid ""
 "\"{name}\" already exists in this folder. Choose a name for the extracted "
 "folder."
-msgstr "« {name} » existe déjà dans ce dossier. Choisissez un nom pour le dossier extrait."
+msgstr ""
+"« {name} » existe déjà dans ce dossier. Choisissez un nom pour le dossier "
+"extrait."
 
-#: src/infrastructure/ui/app_window.py:468
+#: src/infrastructure/ui/app_window.py:487
 #: src/infrastructure/ui/details_page.py:352
 #: src/infrastructure/ui/grid_page.py:280
 #: src/infrastructure/ui/path_page.py:426
 msgid "Extract"
 msgstr "Extraire"
 
-#: src/infrastructure/ui/app_window.py:543
+#: src/infrastructure/ui/app_window.py:562
 msgid "Move failed"
 msgstr "Échec du déplacement"
 
-#: src/infrastructure/ui/app_window.py:544
+#: src/infrastructure/ui/app_window.py:563
 #, python-brace-format
 msgid "Could not move \"{name}\" to this folder."
 msgstr "Impossible de déplacer « {name} » vers ce dossier."
 
-#: src/infrastructure/ui/app_window.py:546
+#: src/infrastructure/ui/app_window.py:565
 msgid "Compression failed"
 msgstr "Échec de la compression"
 
-#: src/infrastructure/ui/app_window.py:547
+#: src/infrastructure/ui/app_window.py:566
 #, python-brace-format
 msgid "Could not compress \"{name}\"."
 msgstr "Impossible de compresser « {name} »."
 
-#: src/infrastructure/ui/app_window.py:549
+#: src/infrastructure/ui/app_window.py:568
 msgid "Extraction failed"
 msgstr "Échec de l'extraction"
 
-#: src/infrastructure/ui/app_window.py:550
+#: src/infrastructure/ui/app_window.py:569
 #, python-brace-format
 msgid "Could not extract \"{name}\"."
 msgstr "Impossible d'extraire « {name} »."
 
-#: src/infrastructure/ui/app_window.py:552
+#: src/infrastructure/ui/app_window.py:571
 msgid "Copy failed"
 msgstr "Échec de la copie"
 
-#: src/infrastructure/ui/app_window.py:553
+#: src/infrastructure/ui/app_window.py:572
 #, python-brace-format
 msgid "Could not copy \"{name}\" to this folder."
 msgstr "Impossible de copier « {name} » vers ce dossier."
 
-#: src/infrastructure/ui/app_window.py:557
-#: src/infrastructure/ui/details_page.py:465
-#: src/infrastructure/ui/details_page.py:505
-#: src/infrastructure/ui/details_page.py:525
-#: src/infrastructure/ui/grid_page.py:393
-#: src/infrastructure/ui/grid_page.py:433
-#: src/infrastructure/ui/grid_page.py:453
-#: src/infrastructure/ui/path_page.py:564
-#: src/infrastructure/ui/path_page.py:610
-#: src/infrastructure/ui/path_page.py:635
+#: src/infrastructure/ui/app_window.py:576
+#: src/infrastructure/ui/details_page.py:466
+#: src/infrastructure/ui/details_page.py:506
+#: src/infrastructure/ui/details_page.py:526
+#: src/infrastructure/ui/grid_page.py:394
+#: src/infrastructure/ui/grid_page.py:434
+#: src/infrastructure/ui/grid_page.py:454
+#: src/infrastructure/ui/path_page.py:565
+#: src/infrastructure/ui/path_page.py:611
+#: src/infrastructure/ui/path_page.py:636
 #: src/infrastructure/ui/shared/properties_dialog.py:228
 #: src/infrastructure/ui/shared/properties_dialog.py:358
 #: src/infrastructure/ui/shared/rename_dialog.py:77
@@ -265,112 +280,112 @@ msgstr "Utiliser en fond d'écran"
 msgid "Add to favorites"
 msgstr "Ajouter aux favoris"
 
-#: src/infrastructure/ui/details_page.py:366
-#: src/infrastructure/ui/grid_page.py:294
-#: src/infrastructure/ui/path_page.py:440
+#: src/infrastructure/ui/details_page.py:367
+#: src/infrastructure/ui/grid_page.py:295
+#: src/infrastructure/ui/path_page.py:441
 msgid "Compress…"
 msgstr "Compresser…"
 
-#: src/infrastructure/ui/details_page.py:379
-#: src/infrastructure/ui/grid_page.py:307
-#: src/infrastructure/ui/path_page.py:453
+#: src/infrastructure/ui/details_page.py:380
+#: src/infrastructure/ui/grid_page.py:308
+#: src/infrastructure/ui/path_page.py:454
 msgid "Copy"
 msgstr "Copier"
 
-#: src/infrastructure/ui/details_page.py:385
-#: src/infrastructure/ui/grid_page.py:313
-#: src/infrastructure/ui/path_page.py:459
+#: src/infrastructure/ui/details_page.py:386
+#: src/infrastructure/ui/grid_page.py:314
+#: src/infrastructure/ui/path_page.py:460
 msgid "Cut"
 msgstr "Couper"
 
-#: src/infrastructure/ui/details_page.py:390
-#: src/infrastructure/ui/grid_page.py:318
-#: src/infrastructure/ui/path_page.py:465
+#: src/infrastructure/ui/details_page.py:391
+#: src/infrastructure/ui/grid_page.py:319
+#: src/infrastructure/ui/path_page.py:466
 msgid "Copy Path"
 msgstr "Copier le chemin"
 
-#: src/infrastructure/ui/details_page.py:394
-#: src/infrastructure/ui/grid_page.py:322
-#: src/infrastructure/ui/path_page.py:471
+#: src/infrastructure/ui/details_page.py:395
+#: src/infrastructure/ui/grid_page.py:323
+#: src/infrastructure/ui/path_page.py:472
 msgid "Open Terminal Here"
 msgstr "Ouvrir un terminal ici"
 
-#: src/infrastructure/ui/details_page.py:400
-#: src/infrastructure/ui/grid_page.py:328
-#: src/infrastructure/ui/path_page.py:477
+#: src/infrastructure/ui/details_page.py:401
+#: src/infrastructure/ui/grid_page.py:329
+#: src/infrastructure/ui/path_page.py:478
 #: src/infrastructure/ui/shared/rename_dialog.py:29
 #: src/infrastructure/ui/shared/rename_dialog.py:34
 msgid "Rename"
 msgstr "Renommer"
 
-#: src/infrastructure/ui/details_page.py:412
-#: src/infrastructure/ui/grid_page.py:340
-#: src/infrastructure/ui/path_page.py:489
+#: src/infrastructure/ui/details_page.py:413
+#: src/infrastructure/ui/grid_page.py:341
+#: src/infrastructure/ui/path_page.py:490
 msgid "Add Color"
 msgstr "Ajouter une couleur"
 
-#: src/infrastructure/ui/details_page.py:422
-#: src/infrastructure/ui/grid_page.py:350
-#: src/infrastructure/ui/path_page.py:499
+#: src/infrastructure/ui/details_page.py:423
+#: src/infrastructure/ui/grid_page.py:351
+#: src/infrastructure/ui/path_page.py:500
 msgid "Properties"
 msgstr "Propriétés"
 
-#: src/infrastructure/ui/details_page.py:430
-#: src/infrastructure/ui/details_page.py:435
-#: src/infrastructure/ui/grid_page.py:358
-#: src/infrastructure/ui/grid_page.py:363
-#: src/infrastructure/ui/path_page.py:507
-#: src/infrastructure/ui/path_page.py:512
+#: src/infrastructure/ui/details_page.py:431
+#: src/infrastructure/ui/details_page.py:436
+#: src/infrastructure/ui/grid_page.py:359
+#: src/infrastructure/ui/grid_page.py:364
+#: src/infrastructure/ui/path_page.py:508
+#: src/infrastructure/ui/path_page.py:513
 msgid "Move to Trash"
 msgstr "Mettre à la corbeille"
-
-#: src/infrastructure/ui/details_page.py:433
-#: src/infrastructure/ui/grid_page.py:361
-#: src/infrastructure/ui/path_page.py:510
-msgid "Move to Trash?"
-msgstr "Mettre à la corbeille ?"
 
 #: src/infrastructure/ui/details_page.py:434
 #: src/infrastructure/ui/grid_page.py:362
 #: src/infrastructure/ui/path_page.py:511
+msgid "Move to Trash?"
+msgstr "Mettre à la corbeille ?"
+
+#: src/infrastructure/ui/details_page.py:435
+#: src/infrastructure/ui/grid_page.py:363
+#: src/infrastructure/ui/path_page.py:512
 #, python-brace-format
 msgid "\"{name}\" will be moved to the Trash."
 msgstr "« {name} » sera déplacé vers la corbeille."
 
-#: src/infrastructure/ui/details_page.py:462
-#: src/infrastructure/ui/grid_page.py:390
-#: src/infrastructure/ui/path_page.py:561
-msgid "Could not move to Trash"
-msgstr "Impossible de mettre à la corbeille"
-
 #: src/infrastructure/ui/details_page.py:463
 #: src/infrastructure/ui/grid_page.py:391
 #: src/infrastructure/ui/path_page.py:562
+msgid "Could not move to Trash"
+msgstr "Impossible de mettre à la corbeille"
+
+#: src/infrastructure/ui/details_page.py:464
+#: src/infrastructure/ui/grid_page.py:392
+#: src/infrastructure/ui/path_page.py:563
 #, python-brace-format
 msgid "\"{name}\" could not be moved to the Trash."
 msgstr "« {name} » n'a pas pu être déplacé vers la corbeille."
 
-#: src/infrastructure/ui/details_page.py:502
-#: src/infrastructure/ui/grid_page.py:430
-#: src/infrastructure/ui/path_page.py:607
-msgid "No terminal found"
-msgstr "Aucun terminal trouvé"
-
 #: src/infrastructure/ui/details_page.py:503
 #: src/infrastructure/ui/grid_page.py:431
 #: src/infrastructure/ui/path_page.py:608
+msgid "No terminal found"
+msgstr "Aucun terminal trouvé"
+
+#: src/infrastructure/ui/details_page.py:504
+#: src/infrastructure/ui/grid_page.py:432
+#: src/infrastructure/ui/path_page.py:609
 msgid "No terminal emulator could be found on this system."
 msgstr "Aucun émulateur de terminal n'a pu être trouvé sur ce système."
-
-#: src/infrastructure/ui/details_page.py:522
-#: src/infrastructure/ui/grid_page.py:450
-#: src/infrastructure/ui/path_page.py:632
-msgid "Could not set wallpaper"
-msgstr "Impossible de définir le fond d'écran"
 
 #: src/infrastructure/ui/details_page.py:523
 #: src/infrastructure/ui/grid_page.py:451
 #: src/infrastructure/ui/path_page.py:633
+msgid "Could not set wallpaper"
+msgstr "Impossible de définir le fond d'écran"
+
+#: src/infrastructure/ui/details_page.py:524
+#: src/infrastructure/ui/grid_page.py:452
+#: src/infrastructure/ui/path_page.py:634
 msgid "No supported desktop environment setting could be found."
 msgstr ""
 "Aucun réglage d'environnement de bureau pris en charge n'a pu être trouvé."

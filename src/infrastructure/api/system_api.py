@@ -331,6 +331,27 @@ class SystemApi(SystemApiContract):
         except (OSError, subprocess.SubprocessError):
             return False
 
+    def _run_host_command_capture(self, argv: list[str]) -> str | None:
+        """Like _run_host_command, but for a caller that needs to show
+        *why* a command failed rather than just that it did (see
+        _extract_rar) — None on success, the process's captured stderr
+        (falling back to stdout, then a bare exit-code message) on
+        failure. A generous timeout compared to _run_host_command's
+        quick existence probes: this runs the actual, possibly slow,
+        extraction itself, not just a `command -v` check."""
+        try:
+            result = subprocess.run(
+                self._host_argv(argv),
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            return str(error)
+        if result.returncode == 0:
+            return None
+        return (result.stderr or result.stdout or f"exit code {result.returncode}").strip()
+
     def set_wallpaper(self, path: str) -> bool:
         """Sets `path` (an image) as the desktop background — "Use as
         Wallpaper" in the context menu. There's no portal for this
@@ -552,7 +573,39 @@ class SystemApi(SystemApiContract):
         "tar.bz2": "bztar",
         "tar.xz": "xztar",
     }
-    _ARCHIVE_EXTENSIONS = (".tar.gz", ".tar.bz2", ".tar.xz", ".tar", ".zip")
+    # .rar included here too (for get_archive_base_name's stripping) even
+    # though compress_path never produces one — RAR is a proprietary
+    # format/codec with no write support anywhere it's actually free, see
+    # _extract_rar for the read/extract side.
+    _ARCHIVE_EXTENSIONS = (".tar.gz", ".tar.bz2", ".tar.xz", ".tar", ".zip", ".rar")
+
+    # Host binaries tried, in this order, to extract a .rar (see
+    # _extract_rar) — unrar is the reference implementation and most
+    # reliable across RAR versions; the others are common enough
+    # fallbacks that ship RAR support on many distros without unrar
+    # specifically installed. Each entry builds that binary's own argv to
+    # extract `source` into an already-existing `destination_dir`,
+    # forcing overwrite so a second attempt can't hang on an interactive
+    # prompt (destination_dir is always fresh/collision-checked before
+    # extract_path is ever called — see MainWindow._on_extract_requested
+    # — so "overwrite" here never actually clobbers anything real).
+    _RAR_EXTRACT_ARGV_BUILDERS = {
+        "unrar": lambda source, destination_dir: [
+            "unrar", "x", "-o+", "-y", source, destination_dir + os.sep,
+        ],
+        "7z": lambda source, destination_dir: [
+            "7z", "x", f"-o{destination_dir}", "-y", source,
+        ],
+        "7za": lambda source, destination_dir: [
+            "7za", "x", f"-o{destination_dir}", "-y", source,
+        ],
+        "unar": lambda source, destination_dir: [
+            "unar", "-force-overwrite", "-output-directory", destination_dir, source,
+        ],
+        "bsdtar": lambda source, destination_dir: [
+            "bsdtar", "-xf", source, "-C", destination_dir,
+        ],
+    }
 
     def compress_path(self, source: str, destination: str, archive_format: str) -> str | None:
         """Builds `destination` (a full archive path, extension included)
@@ -585,21 +638,56 @@ class SystemApi(SystemApiContract):
         caller — MainWindow._on_extract_requested — picks that name,
         defaulting to the archive's own base name via
         get_archive_base_name and prompting for a new one on a
-        collision, same as a paste job) using Python's own zipfile/
-        tarfile modules via shutil.unpack_archive, the inverse of
-        compress_path. Format is auto-detected from source's extension
-        (shutil.unpack_archive's own registered formats —
-        zip/tar/gztar/bztar/xztar — matching exactly what compress_path
-        can produce, and what FileEntryEntity.is_extractable_archive()
-        checks for before showing the "Extract" context menu entry).
-        destination_dir is created if it doesn't already exist. None on
-        success, error text on failure (including an unrecognized
-        extension)."""
+        collision, same as a paste job).
+
+        .rar is shelled out to a host tool (see _extract_rar) — no
+        Python stdlib support for that format/codec. Everything else
+        (zip/tar/gztar/bztar/xztar, matching exactly what compress_path
+        can produce) uses Python's own zipfile/tarfile modules via
+        shutil.unpack_archive, the inverse of compress_path — both are
+        what FileEntryEntity.is_extractable_archive() checks the
+        extension against before showing the "Extract" context menu
+        entry. destination_dir is created if it doesn't already exist.
+        None on success, error text on failure (including an
+        unrecognized extension, or — for .rar — no RAR-capable host tool
+        being installed)."""
+        if source.lower().endswith(".rar"):
+            return self._extract_rar(source, destination_dir)
         try:
             shutil.unpack_archive(source, destination_dir)
             return None
         except (OSError, ValueError) as error:
             return str(error)
+
+    def _extract_rar(self, source: str, destination_dir: str) -> str | None:
+        """Tries each of _RAR_EXTRACT_ARGV_BUILDERS' host binaries in
+        order, running on the host under Flatpak the same way
+        open_terminal does (--talk-name=org.freedesktop.Flatpak — see
+        _host_argv), and reports whichever error the last one produced
+        if every available one failed. None (no error) as soon as one
+        succeeds."""
+        try:
+            os.makedirs(destination_dir, exist_ok=True)
+        except OSError as error:
+            return str(error)
+
+        tried_any = False
+        last_error = None
+        for binary, build_argv in self._RAR_EXTRACT_ARGV_BUILDERS.items():
+            if not self._host_command_exists(binary):
+                continue
+            tried_any = True
+            last_error = self._run_host_command_capture(build_argv(source, destination_dir))
+            if last_error is None:
+                return None
+
+        if not tried_any:
+            return _(
+                "No RAR-capable tool was found on this system (tried unrar, "
+                "7z, unar, bsdtar — install one of these to extract .rar "
+                "archives)."
+            )
+        return last_error
 
     def get_archive_base_name(self, path: str) -> str:
         """`path`'s filename with its archive extension stripped — e.g.

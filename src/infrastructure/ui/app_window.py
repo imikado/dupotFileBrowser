@@ -25,22 +25,7 @@ APP_ID = "org.dupot.filebrowser"
 
 
 class _FileOpJob:
-    """One queued background filesystem operation — a copy/move (from
-    the paste button), a compress (from a folder's "Compress…" context
-    menu entry), or an extract (from an archive's "Extract" entry). All
-    four share the same one-at-a-time queue (see MainWindow._job_queue)
-    so a slow compress/extract on a big folder/archive can't run
-    concurrently with, and fight over disk I/O with, a paste job, or
-    vice versa — and so all surface through the same pending-count
-    badge.
-
-    `destination` means different things per kind: the new archive's own
-    path for "compress" (a file, alongside source), the extraction
-    target *directory* for "extract" (a new folder named after the
-    archive, in its own parent — see MainWindow._on_extract_requested,
-    which already resolved any name collision before enqueuing), and the
-    copied/moved-to path for "copy"/"move"."""
-
+   
     def __init__(self, kind: str, source: str, destination: str, archive_format: str | None = None):
         self.kind = kind  # "copy" | "move" | "compress" | "extract"
         self.source = source
@@ -58,16 +43,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._system_api = SystemApi()
         self._settings = UserSettingsEntity()
         self.set_default_size(self._settings.window_width, self._settings.window_height)
-        # Debounce id for _on_window_size_changed — GTK fires
-        # notify::default-width/height continuously while the user drags
-        # an edge, so saving on every one of those would hammer disk I/O;
-        # this coalesces a burst of resize events into one write, a
-        # moment after the user stops moving the pointer.
+
         self._save_window_size_source_id: int | None = None
-        # Debounce id for _on_grid_icon_size_changed — same reasoning:
-        # ViewModeSwitcher's slider fires "value-changed" continuously
-        # while dragged, and rebuilding every grid tile plus saving to
-        # disk on each one of those would be wasteful and stuttery.
+
         self._grid_icon_size_source_id: int | None = None
         self.connect("notify::default-width", self._on_window_size_changed)
         self.connect("notify::default-height", self._on_window_size_changed)
@@ -75,6 +53,13 @@ class MainWindow(Adw.ApplicationWindow):
         self._home_path = self._system_api.get_home_dir()
         self._trash_path = self._system_api.get_trash_dir()
         self._current_path = self._home_path
+
+        self._host_etc_path = (
+            "/run/host/etc"
+            if self._system_api.is_running_flatpak()
+            and self._system_api.is_dir("/run/host/etc")
+            else None
+        )
 
         toolbar_view = Adw.ToolbarView()
 
@@ -95,28 +80,14 @@ class MainWindow(Adw.ApplicationWindow):
         self._path_entry.connect("changed", self._on_path_entry_changed)
         header_bar.set_title_widget(self._path_entry)
 
-        # Path + mode ("copy"/"cut") last sent to the clipboard via the
-        # "Copy"/"Cut" context menu entries (see PathPage's on_file_copied
-        # /on_file_cut).
         self._clipboard_path: str | None = None
         self._clipboard_is_cut: bool = False
-        # Background job queue — copy/move (paste) jobs and compress jobs
-        # both land here and run one at a time (see _process_next_job),
-        # sharing the same pending-count badge the paste button shows
-        # (_update_paste_button/_build_pending_button) regardless of
-        # which kind of job is actually running.
+
         self._job_queue: list[_FileOpJob] = []
-        # Fixed-position, permanently packed placeholder — its content is
-        # destroyed and rebuilt by _update_paste_button() (plain "Paste the
-        # file" button, or the pending/badge button), but the slot itself
-        # never moves, so it always stays right of the path entry.
+
         self._paste_slot = Gtk.Box()
         header_bar.pack_end(self._paste_slot)
         self._paste_badge_css = self._build_paste_badge_css_provider()
-
-        #self._dark_mode_button = Gtk.Button()
-        #self._dark_mode_button.connect("clicked", self._on_toggle_dark_mode)
-        #header_bar.pack_end(self._dark_mode_button)
 
         self._view_mode_switcher = ViewModeSwitcher(
             self._settings, self._on_view_mode_changed, self._on_grid_icon_size_changed
@@ -162,10 +133,6 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self._path_page.set_hexpand(True)
 
-        # Same current-folder callbacks as PathPage — both are just
-        # different presentations of "the browser" (see ViewModeSwitcher);
-        # whichever is on screen drives the same path/favorites/clipboard
-        # state in MainWindow.
         self._grid_page = GridPage(
             self._on_path_changed,
             self._refresh_side_menu,
@@ -176,9 +143,6 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self._grid_page.set_hexpand(True)
 
-        # Same current-folder callbacks again — the sortable details
-        # table is just a third presentation of "the browser" (see
-        # ViewModeSwitcher).
         self._details_page = DetailsPage(
             self._on_path_changed,
             self._refresh_side_menu,
@@ -192,10 +156,6 @@ class MainWindow(Adw.ApplicationWindow):
         self._trash_page = TrashPage(self._system_api)
         self._trash_page.set_hexpand(True)
 
-        # Switched between the Miller-column browser, the icon/thumbnail
-        # grid, the sortable details table, and the flat Trash list —
-        # Trash is different enough as a UI paradigm (see TrashPage) that
-        # reusing any browser view for it wouldn't work.
         self._main_stack = Gtk.Stack()
         self._main_stack.set_hexpand(True)
         self._main_stack.add_named(self._path_page, "browser")
@@ -210,14 +170,6 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar_view.set_content(body)
         self.set_content(toolbar_view)
 
-        # Header/sidebar/trash icons are baked light/dark PNGs (see
-        # file_icons.py), not auto-recoloring symbolic icons — every place
-        # one was built has to be rebuilt when the style flips, whether
-        # from _apply_theme() below (the very first application, before
-        # any of them have seen the *real* starting scheme) or later, from
-        # the in-app toggle or the desktop's own scheme changing
-        # underneath it. PathPage/TrashPage handle their own rows; this
-        # covers what MainWindow builds directly.
         Adw.StyleManager.get_default().connect(
             "notify::dark", self._on_style_dark_changed
         )
@@ -241,14 +193,9 @@ class MainWindow(Adw.ApplicationWindow):
         return GLib.SOURCE_REMOVE
 
     def _on_close_request(self, _window) -> bool:
-        # Catches a resize immediately followed by closing the window —
-        # otherwise that last size could still be sitting in the debounce
-        # above, never written to disk.
         if self._save_window_size_source_id is not None:
             GLib.source_remove(self._save_window_size_source_id)
             self._save_window_size()
-        # Same idea for a grid icon-size drag immediately followed by
-        # closing the window.
         if self._grid_icon_size_source_id is not None:
             GLib.source_remove(self._grid_icon_size_source_id)
             UserSettingsApi(self._system_api).save()
@@ -271,6 +218,10 @@ class MainWindow(Adw.ApplicationWindow):
                 "user-trash", _("Trash"), self._trash_path, self._go_to_trash
             ),
         ]
+        if self._host_etc_path is not None:
+            items.append(
+                SideMenuItem("folder", _("Host /etc"), self._host_etc_path, self._go_to_path)
+            )
         if self._settings.favorite_list:
             items.append(None)  # separator between Home and the favorites
             for favorite in self._settings.favorite_list:
@@ -324,9 +275,6 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_paste_button()
 
     def _update_paste_button(self):
-        """Empties _paste_slot and rebuilds a fresh button for the current
-        state — a real remove-and-recreate rather than a hidden/shown
-        widget, so a stale button never lingers on screen."""
         self._clear_paste_slot()
 
         pending_count = len(self._job_queue)
@@ -376,10 +324,6 @@ class MainWindow(Adw.ApplicationWindow):
         is_cut = self._clipboard_is_cut
         if not source_path:
             return
-        # Cleared and removed as soon as clicked — passed along explicitly
-        # from here on, so self._clipboard_path can't make the button
-        # reappear later (e.g. from _update_paste_button once the job
-        # finishes) and can't leak into a second, unrelated paste.
         self._clipboard_path = None
         self._clipboard_is_cut = False
         self._clear_paste_slot()
@@ -429,20 +373,9 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.present(self)
 
     def _on_compress_requested(self, path: str, destination: str, archive_format: str):
-        """Called by compress_dialog.py once the user has picked a free
-        archive name/format for a folder's "Compress…" context menu
-        entry — queues the actual compression exactly like a paste job,
-        rather than running it on the spot, since it can take a while on
-        a large folder (see _FileOpJob)."""
         self._enqueue_job(_FileOpJob("compress", path, destination, archive_format))
 
     def _on_extract_requested(self, path: str):
-        """Called by an archive's "Extract" context menu entry — extracts
-        into a new folder named after the archive (its own base name,
-        extension stripped) in the archive's own parent, asking for a
-        new name first if that folder's already taken (same collision
-        flow as a paste job — see _ask_extract_name) rather than
-        overwriting whatever's already there."""
         parent = self._system_api.get_parent_dir(path)
         base_name = self._system_api.get_archive_base_name(path)
         destination = os.path.join(parent, base_name)
@@ -494,19 +427,11 @@ class MainWindow(Adw.ApplicationWindow):
             self._process_next_job()
 
     def _process_next_job(self):
-        """Runs the head-of-queue job in a background thread (never
-        blocks the UI), same threading.Thread + GLib.idle_add handoff
-        pattern as dupotEasyFlatpak's install/update jobs."""
         if not self._job_queue:
             return
         threading.Thread(target=self._run_job, args=(self._job_queue[0],), daemon=True).start()
 
     def _run_job(self, job: _FileOpJob):
-        # copy_path()/move_path()/compress_path()/extract_path() all run
-        # in-process (shutil) — no host subprocess needed,
-        # --filesystem=host already gives direct access to source and
-        # destination alike. Still off the main thread since any of the
-        # four can be slow on a big folder/archive.
         if job.kind == "move":
             error = self._system_api.move_path(job.source, job.destination)
         elif job.kind == "compress":
@@ -522,10 +447,6 @@ class MainWindow(Adw.ApplicationWindow):
             self._job_queue.pop(0)
         self._update_paste_button()
         if error is None:
-            # For "extract", destination is already the folder to
-            # refresh (its own parent — see _on_extract_requested); every
-            # other kind's destination is a *file* path, so the folder to
-            # refresh is its dirname.
             refresh_target = (
                 job.destination if job.kind == "extract" else os.path.dirname(job.destination)
             )
@@ -558,10 +479,6 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.present(self)
 
     def _browser_view_name(self) -> str:
-        """Which _main_stack page is "the browser" right now — the
-        Miller-column PathPage, the icon/thumbnail GridPage, or the
-        sortable DetailsPage — per UserSettingsEntity.view_mode (see
-        ViewModeSwitcher)."""
         if self._settings.use_grid_view():
             return "grid"
         if self._settings.use_details_view():
@@ -576,24 +493,15 @@ class MainWindow(Adw.ApplicationWindow):
         return self._path_page
 
     def _uses_single_folder_view(self) -> bool:
-        """True for the two "one folder in place" views (grid, details),
-        false for PathPage's Miller-column chain — several call sites
-        below branch on exactly this distinction."""
         return self._settings.use_grid_view() or self._settings.use_details_view()
 
     def _go_to_path(self, path: str):
-        """Full reset: used for sidebar navigation and the initial load,
-        collapses back down to a single Miller column (or, in grid mode,
-        just the one folder) showing `path`."""
         self._main_stack.set_visible_child_name(self._browser_view_name())
         self._path_entry.set_sensitive(True)
         self._update_path_state(path)
         self._active_browser_page().load_path(path)
 
     def _go_to_trash(self, _path: str):
-        """Sidebar "Trash" entry: swaps the browser out for TrashPage
-        instead of navigating PathPage anywhere — the Trash isn't a real,
-        Miller-column-navigable folder (see TrashPage)."""
         self._main_stack.set_visible_child_name("trash")
         self._trash_page.refresh()
         self._path_entry.set_text(_("Trash"))
@@ -602,9 +510,6 @@ class MainWindow(Adw.ApplicationWindow):
         self._side_menu.set_selected_path(self._trash_path)
 
     def _on_path_changed(self, path: str):
-        """Called by PathPage when the deepest open column changes because
-        the user clicked into/around the Miller columns, without resetting
-        the columns themselves."""
         self._update_path_state(path)
 
     def _update_path_state(self, path: str):
@@ -616,17 +521,11 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_up_clicked(self, _button):
         if self._uses_single_folder_view():
-            # No columns to preserve here — just navigate the one folder
-            # up, same as clicking a folder in the grid/details view
-            # navigates down.
             parent_path = self._system_api.get_parent_dir(self._current_path)
             if parent_path != self._current_path:
                 self._update_path_state(parent_path)
                 self._active_browser_page().load_path(parent_path)
         else:
-            # Reveals the enclosing folder as a new leftmost column; never
-            # drops any column that's already open (see
-            # PathPage.prepend_parent).
             self._path_page.prepend_parent()
 
     def _on_path_entry_activate(self, entry):
@@ -650,7 +549,6 @@ class MainWindow(Adw.ApplicationWindow):
             self._settings.theme = UserSettingsEntity.THEME_DARK
         UserSettingsApi(self._system_api).save()
         self._apply_theme()
-        #self._update_dark_mode_icon()
 
     def _apply_theme(self):
         style_manager = Adw.StyleManager.get_default()
@@ -661,15 +559,6 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             style_manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
 
-    #def _update_dark_mode_icon(self):
-    #    is_dark = Adw.StyleManager.get_default().get_dark()
-    #    self._dark_mode_button.set_child(
-    #        build_icon_image("weather-clear" if is_dark else "weather-clear-night")
-    #    )
-    #    self._dark_mode_button.set_tooltip_text(
-    #        _("Switch to light mode") if is_dark else _("Switch to dark mode")
-    #    )
-
     def _on_menu_parameters(self, _action, _param):
         ParametersDialog(self._on_settings_saved).present(self)
 
@@ -678,28 +567,15 @@ class MainWindow(Adw.ApplicationWindow):
         if hidden_files_changed:
             self._active_browser_page().refresh_hidden_files()
         if single_click_open_changed:
-            # Both pages, not just the active one — unlike hidden files
-            # (re-read fresh on every _reload), the click-to-open mode is
-            # a plain widget property set once at construction time, so
-            # whichever page isn't on screen right now would otherwise
-            # keep the stale setting until the app restarts.
             self._grid_page.apply_click_to_open_setting()
             self._details_page.apply_click_to_open_setting()
 
     def _on_view_mode_changed(self, mode: str):
-        """ViewModeSwitcher already updated the in-memory
-        UserSettingsEntity singleton — this just persists it and swaps
-        _main_stack, loading the newly-active page fresh (see
-        _browser_view_name) so it can't show whatever it had on screen
-        the last time it was visible, however stale."""
         UserSettingsApi(self._system_api).save()
         self._main_stack.set_visible_child_name(self._browser_view_name())
         if mode in (UserSettingsEntity.VIEW_MODE_GRID, UserSettingsEntity.VIEW_MODE_DETAILS):
             self._active_browser_page().load_path(self._current_path)
         else:
-            # Rebuilds the ancestor chain rather than a single column —
-            # nicer to land on when coming from a single-folder view,
-            # same as typing a path into the entry does.
             self._path_page.load_path_chain(self._current_path)
 
     def _on_grid_icon_size_changed(self, size: int):

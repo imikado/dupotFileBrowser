@@ -100,16 +100,18 @@ _ICON_KEY_TYPE_LABEL = {
     "executable": lambda: _("Executable"),
 }
 
-# Extensions SystemApi.extract_path can actually unpack (shutil's own
-# registered formats: zip, tar, gztar, bztar, xztar) — a subset of
-# _EXTENSION_ICON_MAP's broader "archive" category, which also covers
-# formats we can't extract in-process (7z, rar, deb, rpm, flatpak).
-# Deliberately kept in sync by hand with SystemApi.compress_path's own
-# _ARCHIVE_EXTENSIONS rather than imported from there — this is domain
-# code, infrastructure/api/system_api.py isn't something it should
-# depend on. Longest first so ".tar.gz" matches whole instead of via a
-# shorter suffix.
-_EXTRACTABLE_ARCHIVE_EXTENSIONS = (".tar.gz", ".tar.bz2", ".tar.xz", ".tar", ".zip")
+# Extensions SystemApi.extract_path can actually unpack — shutil's own
+# registered formats (zip, tar, gztar, bztar, xztar) handled in-process,
+# plus .rar shelled out to whatever RAR-capable host tool is installed
+# (see SystemApi._extract_rar — no Python stdlib support for it, it's a
+# proprietary format/codec) — a subset of _EXTENSION_ICON_MAP's broader
+# "archive" category, which still covers formats neither path can unpack
+# (7z, deb, rpm, flatpak). Deliberately kept in sync by hand with
+# SystemApi.compress_path's own _ARCHIVE_EXTENSIONS rather than imported
+# from there — this is domain code, infrastructure/api/system_api.py
+# isn't something it should depend on. Longest first so ".tar.gz"
+# matches whole instead of via a shorter suffix.
+_EXTRACTABLE_ARCHIVE_EXTENSIONS = (".tar.gz", ".tar.bz2", ".tar.xz", ".tar", ".zip", ".rar")
 
 
 class FileEntryEntity:
@@ -152,8 +154,12 @@ class FileEntryEntity:
 
     def is_extractable_archive(self) -> bool:
         """Whether this file's extension is one SystemApi.extract_path
-        can actually unpack — gates the "Extract Here" context menu
-        entry (see _EXTRACTABLE_ARCHIVE_EXTENSIONS)."""
+        can actually unpack — gates the "Extract" context menu entry
+        (see _EXTRACTABLE_ARCHIVE_EXTENSIONS). True for .rar doesn't
+        guarantee a RAR-capable host tool is actually installed
+        (extract_path reports that failure itself if none is) — same
+        "show the entry, fail with a clear message if it can't run" as
+        "Open Terminal Here" already does for a missing terminal."""
         if self.is_dir:
             return False
         lowered_name = self.name.lower()

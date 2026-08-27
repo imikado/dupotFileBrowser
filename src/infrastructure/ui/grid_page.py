@@ -289,18 +289,19 @@ class GridPage(Gtk.Box):
                     lambda: self._add_to_favorites(entry.name, entry.path),
                 )
             )
-            item_list.append(
-                ContextMenuItem(
-                    _("Compress…"),
-                    lambda: show_compress_dialog(
-                        tile.get_root(),
-                        self._system_api,
-                        entry.name,
-                        entry.path,
-                        self._on_compress_requested,
-                    ),
-                )
+
+        item_list.append(
+            ContextMenuItem(
+                _("Compress…"),
+                lambda: show_compress_dialog(
+                    tile.get_root(),
+                    self._system_api,
+                    entry.name,
+                    entry.path,
+                    self._on_compress_requested,
+                ),
             )
+        )
 
         item_list.append(
             ContextMenuItem(

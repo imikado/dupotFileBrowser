@@ -29,16 +29,7 @@ def show_compress_dialog(
     on_confirmed,
     initial_name: str | None = None,
 ):
-    """Adw.AlertDialog asking for an archive name and format for `path`
-    (a folder, currently called `name`) — same "ask for a name, re-ask on
-    collision" shape as show_rename_dialog. This dialog only resolves the
-    name/format/collision, it never runs the compression itself:
-    compressing a large folder can take a while, so once a free
-    destination is settled on, this hands (path, destination,
-    archive_format) to `on_confirmed` and lets the caller queue it
-    through MainWindow's background job queue — the same one copy/move
-    (paste) jobs run through, so a compress never blocks the UI or races
-    another file operation."""
+
     format_choices = _format_choices()
 
     name_entry = Gtk.Entry()
