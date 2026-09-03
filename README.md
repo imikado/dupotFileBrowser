@@ -24,7 +24,7 @@ UI and system access).
 </tr>
 <tr>
 <td><img src="export/screenshots/path_editable.png" width="400" alt="Path is editable"><br>Path is editable</td>
-<td><img src="export/screenshots/folder_menu.png" width="400" alt="Folder context menu"><br>Folder context menu</td>
+<td><img src="export/screenshots/folder_menu.png" width="200" alt="Folder context menu"><br>Folder context menu</td>
 </tr>
 <tr>
 <td><img src="export/screenshots/add_color.png" width="400" alt="Tag a folder with a color"><br>Tag a folder with a color</td>
