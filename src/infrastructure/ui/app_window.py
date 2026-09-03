@@ -12,20 +12,17 @@ from domain.conf.app_version_conf import APP_VERSION
 from domain.entity.user_settings_entity import UserSettingsEntity
 from infrastructure.api.system_api import SystemApi
 from infrastructure.api.user_settings_api import UserSettingsApi
-from infrastructure.ui.details_page import DetailsPage
-from infrastructure.ui.grid_page import GridPage
+from infrastructure.ui.browser_tab import BrowserTab
 from infrastructure.ui.menu.parameters_dialog import ParametersDialog
-from infrastructure.ui.path_page import PathPage
 from infrastructure.ui.shared.file_icons import build_icon_image
 from infrastructure.ui.shared.sidemenu_shared import SideMenuItem, SideMenuShared
 from infrastructure.ui.shared.view_mode_switcher import ViewModeSwitcher
-from infrastructure.ui.trash_page import TrashPage
 
 APP_ID = "org.dupot.filebrowser"
 
 
 class _FileOpJob:
-   
+
     def __init__(self, kind: str, source: str, destination: str, archive_format: str | None = None):
         self.kind = kind  # "copy" | "move" | "compress" | "extract"
         self.source = source
@@ -53,6 +50,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._home_path = self._system_api.get_home_dir()
         self._trash_path = self._system_api.get_trash_dir()
         self._current_path = self._home_path
+        self._tabs: list[BrowserTab] = []
 
         self._host_etc_path = (
             "/run/host/etc"
@@ -111,10 +109,36 @@ class MainWindow(Adw.ApplicationWindow):
         for name, callback in [
             ("parameters", self._on_menu_parameters),
             ("about", self._on_menu_about),
+            ("new-tab", self._new_tab_from_active),
+            ("close-tab", self._close_active_tab),
         ]:
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", callback)
             self.add_action(action)
+
+        app = kwargs.get("application")
+        if app is not None:
+            app.set_accels_for_action("win.new-tab", ["<Control>t"])
+            app.set_accels_for_action("win.close-tab", ["<Control>w"])
+
+        self._tab_view = Adw.TabView()
+        self._tab_view.set_vexpand(True)
+        self._tab_view.connect("close-page", self._on_tab_close_page)
+        self._tab_view.connect("notify::selected-page", self._on_tab_selected)
+
+        tab_bar = Adw.TabBar(view=self._tab_view)
+        tab_bar.set_autohide(False)  # keep the "+" button reachable with only one tab open
+        new_tab_button = Gtk.Button()
+        new_tab_button.set_child(Gtk.Image.new_from_icon_name("tab-new-symbolic"))
+        new_tab_button.set_tooltip_text(_("New Tab"))
+        new_tab_button.connect("clicked", self._new_tab_from_active)
+        tab_bar.set_end_action_widget(new_tab_button)
+
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        content_box.set_hexpand(True)
+        content_box.set_vexpand(True)
+        content_box.append(tab_bar)
+        content_box.append(self._tab_view)
 
         body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         body.set_vexpand(True)
@@ -129,49 +153,9 @@ class MainWindow(Adw.ApplicationWindow):
         sidebar_scroll.set_size_request(220, -1)
         sidebar_scroll.add_css_class("background")
 
-        self._path_page = PathPage(
-            self._on_path_changed,
-            self._refresh_side_menu,
-            self._on_file_copied,
-            self._on_file_cut,
-            self._on_compress_requested,
-            self._on_extract_requested,
-        )
-        self._path_page.set_hexpand(True)
-
-        self._grid_page = GridPage(
-            self._on_path_changed,
-            self._refresh_side_menu,
-            self._on_file_copied,
-            self._on_file_cut,
-            self._on_compress_requested,
-            self._on_extract_requested,
-        )
-        self._grid_page.set_hexpand(True)
-
-        self._details_page = DetailsPage(
-            self._on_path_changed,
-            self._refresh_side_menu,
-            self._on_file_copied,
-            self._on_file_cut,
-            self._on_compress_requested,
-            self._on_extract_requested,
-        )
-        self._details_page.set_hexpand(True)
-
-        self._trash_page = TrashPage(self._system_api)
-        self._trash_page.set_hexpand(True)
-
-        self._main_stack = Gtk.Stack()
-        self._main_stack.set_hexpand(True)
-        self._main_stack.add_named(self._path_page, "browser")
-        self._main_stack.add_named(self._grid_page, "grid")
-        self._main_stack.add_named(self._details_page, "details")
-        self._main_stack.add_named(self._trash_page, "trash")
-
         body.append(sidebar_scroll)
         body.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        body.append(self._main_stack)
+        body.append(content_box)
 
         toolbar_view.set_content(body)
         self.set_content(toolbar_view)
@@ -181,8 +165,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self._apply_theme()
-        #self._update_dark_mode_icon()
-        self._go_to_path(self._current_path)
+        self._new_tab(self._home_path)
 
     def _on_window_size_changed(self, _window, _pspec):
         if self._save_window_size_source_id is not None:
@@ -210,10 +193,10 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_style_dark_changed(self, _style_manager, _pspec):
         self._up_button.set_child(build_icon_image("go-up"))
         self._menu_button.set_child(build_icon_image("open-menu"))
-        #self._update_dark_mode_icon()
         self._update_paste_button()
         self._refresh_side_menu()
-        self._trash_page.refresh()
+        for tab in self._tabs:
+            tab.refresh_trash()
 
     def _refresh_side_menu(self):
         items = [
@@ -252,6 +235,92 @@ class MainWindow(Adw.ApplicationWindow):
         UserSettingsApi(self._system_api).save()
         self._refresh_side_menu()
 
+    # --- Tabs -----------------------------------------------------------
+
+    def _active_tab(self) -> BrowserTab | None:
+        page = self._tab_view.get_selected_page()
+        return page.get_child() if page is not None else None
+
+    def _new_tab_from_active(self, *_args):
+        active = self._active_tab()
+        if active is not None and active.showing_trash:
+            self._new_tab(self._home_path)
+        else:
+            self._new_tab(self._current_path)
+
+    def _new_tab(self, path: str | None = None) -> BrowserTab:
+        tab = BrowserTab(
+            self._system_api,
+            self._settings,
+            self._home_path,
+            self._trash_path,
+            on_path_changed=lambda p: self._on_tab_path_changed(tab, p),
+            on_favorites_changed=self._refresh_side_menu,
+            on_file_copied=self._on_file_copied,
+            on_file_cut=self._on_file_cut,
+            on_compress_requested=self._on_compress_requested,
+            on_extract_requested=self._on_extract_requested,
+        )
+        self._tabs.append(tab)
+        tab_page = self._tab_view.append(tab)
+        tab.tab_page = tab_page
+
+        target = path or self._home_path
+        tab.navigate(target)
+        self._update_tab_title(tab)
+
+        self._tab_view.set_selected_page(tab_page)
+        self._path_entry.set_sensitive(True)
+        self._update_path_state(target)
+        return tab
+
+    def _close_active_tab(self, *_args):
+        page = self._tab_view.get_selected_page()
+        if page is not None:
+            self._tab_view.close_page(page)
+
+    def _on_tab_close_page(self, tab_view, page) -> bool:
+        if tab_view.get_n_pages() <= 1:
+            tab_view.close_page_finish(page, False)
+            return True
+        tab = page.get_child()
+        if tab in self._tabs:
+            self._tabs.remove(tab)
+        tab_view.close_page_finish(page, True)
+        return True
+
+    def _on_tab_selected(self, _tab_view, _pspec):
+        tab = self._active_tab()
+        if tab is None:
+            return
+        if tab.showing_trash:
+            self._current_path = self._trash_path
+            self._path_entry.set_text(_("Trash"))
+            self._path_entry.set_sensitive(False)
+            self._up_button.set_sensitive(False)
+            self._side_menu.set_selected_path(self._trash_path)
+        else:
+            self._path_entry.set_sensitive(True)
+            self._update_path_state(tab.current_path)
+
+    def _on_tab_path_changed(self, tab: BrowserTab, path: str):
+        tab.current_path = path
+        self._update_tab_title(tab)
+        if tab is self._active_tab():
+            self._update_path_state(path)
+
+    def _update_tab_title(self, tab: BrowserTab):
+        if tab.tab_page is not None:
+            tab.tab_page.set_title(self._tab_title_for(tab))
+
+    def _tab_title_for(self, tab: BrowserTab) -> str:
+        if tab.showing_trash:
+            return _("Trash")
+        if tab.current_path == self._home_path:
+            return _("Home")
+        name = os.path.basename(tab.current_path.rstrip("/"))
+        return name or tab.current_path
+
     # --- Paste button (Copy -> Paste the file, with a pending-jobs badge) -
     # Also drives the "Compress…" context menu entry (see
     # _on_compress_requested) — same badge, same one-at-a-time queue.
@@ -273,13 +342,11 @@ class MainWindow(Adw.ApplicationWindow):
         return provider
 
     def _on_file_copied(self, _name: str, path: str):
-        """Called by PathPage after the "Copy" context menu entry."""
         self._clipboard_path = path
         self._clipboard_is_cut = False
         self._update_paste_button()
 
     def _on_file_cut(self, _name: str, path: str):
-        """Called by PathPage after the "Cut" context menu entry."""
         self._clipboard_path = path
         self._clipboard_is_cut = True
         self._update_paste_button()
@@ -304,7 +371,6 @@ class MainWindow(Adw.ApplicationWindow):
         label = _("Move file") if self._clipboard_is_cut else _("Paste the file")
         button = Gtk.Button(label=label)
         button.add_css_class("flat")
-        # Absolute path of the copied/cut file/folder, on hover.
         button.set_tooltip_text(self._clipboard_path)
         button.connect("clicked", self._on_paste_clicked)
         return button
@@ -374,7 +440,6 @@ class MainWindow(Adw.ApplicationWindow):
                 return
             destination = os.path.join(self._current_path, new_name)
             if self._system_api.file_exists(destination):
-                # Still taken: ask again instead of silently overwriting.
                 GLib.idle_add(self._ask_new_name, source_path, new_name, is_cut)
                 return
             self._enqueue_job(_FileOpJob("move" if is_cut else "copy", source_path, destination))
@@ -421,7 +486,6 @@ class MainWindow(Adw.ApplicationWindow):
                 return
             destination = os.path.join(parent, new_name)
             if self._system_api.file_exists(destination):
-                # Still taken: ask again instead of silently overwriting.
                 GLib.idle_add(self._ask_extract_name, path, new_name, parent)
                 return
             self._enqueue_job(_FileOpJob("extract", path, destination))
@@ -460,9 +524,12 @@ class MainWindow(Adw.ApplicationWindow):
             refresh_target = (
                 job.destination if job.kind == "extract" else os.path.dirname(job.destination)
             )
-            self._active_browser_page().refresh_path(refresh_target)
+            for tab in self._tabs:
+                tab.refresh_path(refresh_target)
             if job.kind == "move":
-                self._active_browser_page().refresh_path(os.path.dirname(job.source))
+                source_parent = os.path.dirname(job.source)
+                for tab in self._tabs:
+                    tab.refresh_path(source_parent)
         else:
             self._show_job_error(job, error)
         self._process_next_job()
@@ -488,39 +555,26 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.add_response("ok", _("OK"))
         dialog.present(self)
 
-    def _browser_view_name(self) -> str:
-        if self._settings.use_grid_view():
-            return "grid"
-        if self._settings.use_details_view():
-            return "details"
-        return "browser"
-
-    def _active_browser_page(self):
-        if self._settings.use_grid_view():
-            return self._grid_page
-        if self._settings.use_details_view():
-            return self._details_page
-        return self._path_page
-
-    def _uses_single_folder_view(self) -> bool:
-        return self._settings.use_grid_view() or self._settings.use_details_view()
-
     def _go_to_path(self, path: str):
-        self._main_stack.set_visible_child_name(self._browser_view_name())
+        tab = self._active_tab()
+        if tab is None:
+            return
+        tab.navigate(path)
+        self._update_tab_title(tab)
         self._path_entry.set_sensitive(True)
         self._update_path_state(path)
-        self._active_browser_page().load_path(path)
 
     def _go_to_trash(self, _path: str):
-        self._main_stack.set_visible_child_name("trash")
-        self._trash_page.refresh()
+        tab = self._active_tab()
+        if tab is None:
+            return
+        tab.go_to_trash()
+        self._update_tab_title(tab)
+        self._current_path = self._trash_path
         self._path_entry.set_text(_("Trash"))
         self._path_entry.set_sensitive(False)
         self._up_button.set_sensitive(False)
         self._side_menu.set_selected_path(self._trash_path)
-
-    def _on_path_changed(self, path: str):
-        self._update_path_state(path)
 
     def _update_path_state(self, path: str):
         self._current_path = path
@@ -530,24 +584,25 @@ class MainWindow(Adw.ApplicationWindow):
         self._side_menu.set_selected_path(path)
 
     def _on_up_clicked(self, _button):
-        if self._uses_single_folder_view():
-            parent_path = self._system_api.get_parent_dir(self._current_path)
-            if parent_path != self._current_path:
-                self._update_path_state(parent_path)
-                self._active_browser_page().load_path(parent_path)
-        else:
-            self._path_page.prepend_parent()
+        tab = self._active_tab()
+        if tab is None:
+            return
+        new_path = tab.go_up()
+        if new_path is not None:
+            self._update_tab_title(tab)
+            self._update_path_state(new_path)
 
     def _on_path_entry_activate(self, entry):
         path = entry.get_text().strip()
-        if path and self._system_api.is_dir(path):
-            self._update_path_state(path)
-            if self._uses_single_folder_view():
-                self._active_browser_page().load_path(path)
-            else:
-                self._path_page.load_path_chain(path)
-        else:
+        if not (path and self._system_api.is_dir(path)):
             entry.add_css_class("error")
+            return
+        tab = self._active_tab()
+        if tab is None:
+            return
+        tab.navigate(path, as_chain=True)
+        self._update_tab_title(tab)
+        self._update_path_state(path)
 
     def _on_path_entry_changed(self, entry):
         entry.remove_css_class("error")
@@ -575,18 +630,19 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_settings_saved(self, hidden_files_changed=False, single_click_open_changed=False):
         self._apply_theme()
         if hidden_files_changed:
-            self._active_browser_page().refresh_hidden_files()
+            for tab in self._tabs:
+                tab.refresh_hidden_files()
         if single_click_open_changed:
-            self._grid_page.apply_click_to_open_setting()
-            self._details_page.apply_click_to_open_setting()
+            for tab in self._tabs:
+                tab.apply_click_to_open_setting()
 
     def _on_view_mode_changed(self, mode: str):
         UserSettingsApi(self._system_api).save()
-        self._main_stack.set_visible_child_name(self._browser_view_name())
-        if mode in (UserSettingsEntity.VIEW_MODE_GRID, UserSettingsEntity.VIEW_MODE_DETAILS):
-            self._active_browser_page().load_path(self._current_path)
-        else:
-            self._path_page.load_path_chain(self._current_path)
+        for tab in self._tabs:
+            tab.apply_view_mode()
+        active = self._active_tab()
+        if active is not None and not active.showing_trash:
+            self._update_path_state(active.current_path)
 
     def _on_grid_icon_size_changed(self, size: int):
         if self._grid_icon_size_source_id is not None:
@@ -597,7 +653,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _apply_grid_icon_size(self, size: int) -> bool:
         self._grid_icon_size_source_id = None
-        self._grid_page.set_icon_size(size)
+        for tab in self._tabs:
+            tab.set_grid_icon_size(size)
         UserSettingsApi(self._system_api).save()
         return GLib.SOURCE_REMOVE
 

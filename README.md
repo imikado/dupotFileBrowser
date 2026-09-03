@@ -15,6 +15,37 @@ UI and system access).
 - Available in English, French and Italian
 - Preferences persisted under `$XDG_DATA_HOME/org.dupot.filebrowser/`
 
+## Screenshots
+
+<table>
+<tr>
+<td><img src="export/screenshots/homepage.png" width="400" alt="Home folder"><br>Home folder</td>
+<td><img src="export/screenshots/columns_navigation.png" width="400" alt="Navigation by column"><br>Navigation by column</td>
+</tr>
+<tr>
+<td><img src="export/screenshots/path_editable.png" width="400" alt="Path is editable"><br>Path is editable</td>
+<td><img src="export/screenshots/folder_menu.png" width="400" alt="Folder context menu"><br>Folder context menu</td>
+</tr>
+<tr>
+<td><img src="export/screenshots/add_color.png" width="400" alt="Tag a folder with a color"><br>Tag a folder with a color</td>
+<td><img src="export/screenshots/file_properties.png" width="400" alt="File properties"><br>File properties</td>
+</tr>
+<tr>
+<td><img src="export/screenshots/display_mode_icons.png" width="400" alt="Grid view"><br>Grid view</td>
+<td><img src="export/screenshots/display_mode_details.png" width="400" alt="Details view"><br>Details view</td>
+</tr>
+<tr>
+<td><img src="export/screenshots/display_mode_list.png" width="400" alt="Columns view"><br>Columns view</td>
+<td><img src="export/screenshots/parameters.png" width="400" alt="Parameters"><br>Parameters</td>
+</tr>
+</table>
+
+Regenerated from a demo dataset (not your real files) with:
+
+```sh
+./generate_screenshots.py
+```
+
 ## Project layout
 
 ```

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-27 23:32+0200\n"
+"POT-Creation-Date: 2026-09-02 17:54+0200\n"
 "PO-Revision-Date: 2026-08-16 09:34+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -80,70 +80,77 @@ msgstr ""
 "questo sistema (provati unrar, 7z, unar, bsdtar — installane uno per "
 "estrarre archivi .rar)."
 
-#: src/infrastructure/ui/app_window.py:41
-#: src/infrastructure/ui/app_window.py:606
+#: src/infrastructure/ui/app_window.py:38
+#: src/infrastructure/ui/app_window.py:656
 msgid "File browser"
 msgstr "Esplora file"
 
-#: src/infrastructure/ui/app_window.py:77
+#: src/infrastructure/ui/app_window.py:75
 msgid "Parent folder"
 msgstr "Cartella superiore"
 
-#: src/infrastructure/ui/app_window.py:84
+#: src/infrastructure/ui/app_window.py:82
 msgid "Type a path and press Enter to go there"
 msgstr "Digita un percorso e premi Invio per accedervi"
 
-#: src/infrastructure/ui/app_window.py:104
+#: src/infrastructure/ui/app_window.py:102
 #: src/infrastructure/ui/menu/parameters_dialog.py:19
 msgid "Parameters"
 msgstr "Impostazioni"
 
-#: src/infrastructure/ui/app_window.py:105
+#: src/infrastructure/ui/app_window.py:103
 msgid "About"
 msgstr "Informazioni"
 
-#: src/infrastructure/ui/app_window.py:221
+#: src/infrastructure/ui/app_window.py:131
+msgid "New Tab"
+msgstr "Nuova scheda"
+
+#: src/infrastructure/ui/app_window.py:197
+#: src/infrastructure/ui/app_window.py:313
 msgid "Home"
 msgstr "Home"
 
-#: src/infrastructure/ui/app_window.py:224
-#: src/infrastructure/ui/app_window.py:517
+#: src/infrastructure/ui/app_window.py:200
+#: src/infrastructure/ui/app_window.py:291
+#: src/infrastructure/ui/app_window.py:311
+#: src/infrastructure/ui/app_window.py:567
 #: src/infrastructure/ui/trash_page.py:32
 msgid "Trash"
 msgstr "Cestino"
 
-#: src/infrastructure/ui/app_window.py:229
+#: src/infrastructure/ui/app_window.py:205
 msgid "Host /etc"
 msgstr "/etc dell'host"
 
-#: src/infrastructure/ui/app_window.py:233
+#: src/infrastructure/ui/app_window.py:209
 msgid "Host /usr"
 msgstr "/usr dell'host"
 
-#: src/infrastructure/ui/app_window.py:304
+#: src/infrastructure/ui/app_window.py:364
 msgid "Move file"
 msgstr "Sposta file"
 
-#: src/infrastructure/ui/app_window.py:304
+#: src/infrastructure/ui/app_window.py:364
 msgid "Paste the file"
 msgstr "Incolla il file"
 
-#: src/infrastructure/ui/app_window.py:329
+#: src/infrastructure/ui/app_window.py:388
 #, python-brace-format
 msgid "{count} pending"
 msgstr "{count} in sospeso"
 
-#: src/infrastructure/ui/app_window.py:356
+#: src/infrastructure/ui/app_window.py:415
 msgid "File already exists"
 msgstr "Il file esiste già"
 
-#: src/infrastructure/ui/app_window.py:358
+#: src/infrastructure/ui/app_window.py:417
 #, python-brace-format
 msgid "\"{name}\" already exists in this folder. Choose a new name."
 msgstr "\"{name}\" esiste già in questa cartella. Scegli un nuovo nome."
 
-#: src/infrastructure/ui/app_window.py:362
-#: src/infrastructure/ui/app_window.py:410
+#: src/infrastructure/ui/app_window.py:421
+#: src/infrastructure/ui/app_window.py:468
 #: src/infrastructure/ui/shared/compress_dialog.py:51
 #: src/infrastructure/ui/shared/confirm_dialog.py:14
 #: src/infrastructure/ui/shared/open_with_popup.py:90
@@ -151,19 +158,19 @@ msgstr "\"{name}\" esiste già in questa cartella. Scegli un nuovo nome."
 msgid "Cancel"
 msgstr "Annulla"
 
-#: src/infrastructure/ui/app_window.py:363
+#: src/infrastructure/ui/app_window.py:422
 msgid "Move"
 msgstr "Sposta"
 
-#: src/infrastructure/ui/app_window.py:363
+#: src/infrastructure/ui/app_window.py:422
 msgid "Paste"
 msgstr "Incolla"
 
-#: src/infrastructure/ui/app_window.py:403
+#: src/infrastructure/ui/app_window.py:461
 msgid "Folder already exists"
 msgstr "La cartella esiste già"
 
-#: src/infrastructure/ui/app_window.py:405
+#: src/infrastructure/ui/app_window.py:463
 #, python-brace-format
 msgid ""
 "\"{name}\" already exists in this folder. Choose a name for the extracted "
@@ -172,50 +179,50 @@ msgstr ""
 "\"{name}\" esiste già in questa cartella. Scegli un nome per la cartella "
 "estratta."
 
-#: src/infrastructure/ui/app_window.py:411
+#: src/infrastructure/ui/app_window.py:469
 #: src/infrastructure/ui/details_page.py:352
 #: src/infrastructure/ui/grid_page.py:280
 #: src/infrastructure/ui/path_page.py:426
 msgid "Extract"
 msgstr "Estrai"
 
-#: src/infrastructure/ui/app_window.py:474
+#: src/infrastructure/ui/app_window.py:534
 msgid "Move failed"
 msgstr "Spostamento non riuscito"
 
-#: src/infrastructure/ui/app_window.py:475
+#: src/infrastructure/ui/app_window.py:535
 #, python-brace-format
 msgid "Could not move \"{name}\" to this folder."
 msgstr "Impossibile spostare \"{name}\" in questa cartella."
 
-#: src/infrastructure/ui/app_window.py:477
+#: src/infrastructure/ui/app_window.py:537
 msgid "Compression failed"
 msgstr "Compressione non riuscita"
 
-#: src/infrastructure/ui/app_window.py:478
+#: src/infrastructure/ui/app_window.py:538
 #, python-brace-format
 msgid "Could not compress \"{name}\"."
 msgstr "Impossibile comprimere \"{name}\"."
 
-#: src/infrastructure/ui/app_window.py:480
+#: src/infrastructure/ui/app_window.py:540
 msgid "Extraction failed"
 msgstr "Estrazione non riuscita"
 
-#: src/infrastructure/ui/app_window.py:481
+#: src/infrastructure/ui/app_window.py:541
 #, python-brace-format
 msgid "Could not extract \"{name}\"."
 msgstr "Impossibile estrarre \"{name}\"."
 
-#: src/infrastructure/ui/app_window.py:483
+#: src/infrastructure/ui/app_window.py:543
 msgid "Copy failed"
 msgstr "Copia non riuscita"
 
-#: src/infrastructure/ui/app_window.py:484
+#: src/infrastructure/ui/app_window.py:544
 #, python-brace-format
 msgid "Could not copy \"{name}\" to this folder."
 msgstr "Impossibile copiare \"{name}\" in questa cartella."
 
-#: src/infrastructure/ui/app_window.py:488
+#: src/infrastructure/ui/app_window.py:548
 #: src/infrastructure/ui/details_page.py:466
 #: src/infrastructure/ui/details_page.py:506
 #: src/infrastructure/ui/details_page.py:526
