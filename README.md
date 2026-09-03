@@ -13,6 +13,7 @@ UI and system access).
 - Click a folder to open it, click a file to open it with its default app
 - Dark/light/system theme, toggleable from the header bar
 - Available in English, French and Italian
+- tab features
 - Preferences persisted under `$XDG_DATA_HOME/org.dupot.filebrowser/`
 
 ## Screenshots
