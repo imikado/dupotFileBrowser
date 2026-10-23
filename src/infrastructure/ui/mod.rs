@@ -1,0 +1,9 @@
+pub mod app_context;
+pub mod app_window;
+pub mod browser_tab;
+pub mod details_page;
+pub mod grid_page;
+pub mod menu;
+pub mod path_page;
+pub mod shared;
+pub mod trash_page;

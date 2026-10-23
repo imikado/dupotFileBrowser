@@ -1,0 +1,27 @@
+{
+    // F5 = debug, Ctrl+F5 = run without debugging. Requires the CodeLLDB
+    // extension (vadimcn.vscode-lldb); the build goes through `nix develop`.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "dupotFileBrowser (debug)",
+            "type": "lldb",
+            "request": "launch",
+            "preLaunchTask": "cargo build",
+            "program": "${workspaceFolder}/target/debug/dupot-file-browser",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/target/vscode.env",
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "dupotFileBrowser (release)",
+            "type": "lldb",
+            "request": "launch",
+            "preLaunchTask": "cargo build --release",
+            "program": "${workspaceFolder}/target/release/dupot-file-browser",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/target/vscode.env",
+            "sourceLanguages": ["rust"]
+        }
+    ]
+}

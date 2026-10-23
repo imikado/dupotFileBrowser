@@ -1,0 +1,134 @@
+# Strings the domain hands to the views untranslated (enum ids and labels,
+# see Theme, Language, ArchiveFormat, PALETTE, TypeLabel and
+# FileOperationEntity::error_messages): xgettext only sees literal tr("…")
+# arguments, so generate_translations.sh merges these in.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "dark"
+msgstr ""
+
+msgid "light"
+msgstr ""
+
+msgid "system"
+msgstr ""
+
+msgid "english"
+msgstr ""
+
+msgid "french"
+msgstr ""
+
+msgid "italian"
+msgstr ""
+
+msgid "ZIP archive (.zip)"
+msgstr ""
+
+msgid "Tar.gz archive (.tar.gz)"
+msgstr ""
+
+msgid "Tar.bz2 archive (.tar.bz2)"
+msgstr ""
+
+msgid "Tar.xz archive (.tar.xz)"
+msgstr ""
+
+msgid "Tar archive (.tar)"
+msgstr ""
+
+msgid "Blue"
+msgstr ""
+
+msgid "Navy"
+msgstr ""
+
+msgid "Aqua"
+msgstr ""
+
+msgid "Teal"
+msgstr ""
+
+msgid "Cyan"
+msgstr ""
+
+msgid "Green"
+msgstr ""
+
+msgid "Sand"
+msgstr ""
+
+msgid "Grey"
+msgstr ""
+
+msgid "Orange"
+msgstr ""
+
+msgid "Yaru"
+msgstr ""
+
+msgid "Red"
+msgstr ""
+
+msgid "Pink"
+msgstr ""
+
+msgid "Purple"
+msgstr ""
+
+msgid "Image"
+msgstr ""
+
+msgid "Audio"
+msgstr ""
+
+msgid "Video"
+msgstr ""
+
+msgid "Archive"
+msgstr ""
+
+msgid "Document"
+msgstr ""
+
+msgid "Spreadsheet"
+msgstr ""
+
+msgid "Presentation"
+msgstr ""
+
+msgid "Font"
+msgstr ""
+
+msgid "Executable"
+msgstr ""
+
+msgid "Move failed"
+msgstr ""
+
+msgid "Compression failed"
+msgstr ""
+
+msgid "Extraction failed"
+msgstr ""
+
+msgid "Copy failed"
+msgstr ""
+
+#, python-brace-format
+msgid "Could not move \"{name}\" to this folder."
+msgstr ""
+
+#, python-brace-format
+msgid "Could not compress \"{name}\"."
+msgstr ""
+
+#, python-brace-format
+msgid "Could not extract \"{name}\"."
+msgstr ""
+
+#, python-brace-format
+msgid "Could not copy \"{name}\" to this folder."
+msgstr ""

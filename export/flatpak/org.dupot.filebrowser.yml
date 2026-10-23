@@ -1,0 +1,60 @@
+app-id: org.dupot.filebrowser
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: dupot-file-browser
+finish-args:
+  - --filesystem=host
+  - --filesystem=/tmp
+  - --filesystem=/var
+  - --filesystem=/sys
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.portal.OpenURI
+  # Terminals, wallpaper setters and RAR tools run on the host
+  - --talk-name=org.freedesktop.Flatpak
+  # GVFS metadata: Nemo-compatible folder colors
+  - --talk-name=org.gtk.vfs.Metadata
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/dupot-file-browser/cargo
+    # Shown in the About dialog; filled in by build_flatpak.sh.
+    DUPOT_BUILD_PACKAGE: flatpak
+    DUPOT_BUILD_DATE: "@BUILD_DATE@"
+
+modules:
+  - name: dupot-file-browser
+    buildsystem: simple
+    build-options:
+      # Local bundle only: lets cargo download crates during the build.
+      # A Flathub submission must instead ship generated cargo-sources.json
+      # (flatpak-builder-tools/cargo) and build with --offline.
+      build-args:
+        - --share=network
+    build-commands:
+      - cargo build --release --locked
+      - install -Dm755 target/release/dupot-file-browser -t /app/bin/
+      - install -Dm644 export/flatpak/org.dupot.filebrowser.desktop -t /app/share/applications/
+      - install -Dm644 export/flatpak/org.dupot.filebrowser.appdata.xml -t /app/share/metainfo/
+      - |
+        for size in 16 24 32 48 64 128 256 512; do
+          install -Dm644 export/flatpak/${size}x${size}.png \
+            /app/share/icons/hicolor/${size}x${size}/apps/org.dupot.filebrowser.png
+        done
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - result
+          - build-dir
+          - repo
+          - .flatpak-builder
+          - .git

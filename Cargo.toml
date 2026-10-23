@@ -1,0 +1,23 @@
+[package]
+name = "dupot-file-browser"
+version = "1.1.0"
+edition = "2024"
+description = "A simple, lightweight file browser for the Linux desktop"
+license = "LGPL-2.1-only"
+authors = ["Michael Bertocchi"]
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.11", features = ["v4_14"] }
+adw = { package = "libadwaita", version = "0.9", features = ["v1_7"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+libc = "0.2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tar = "0.4"
+flate2 = "1"
+bzip2 = "0.5"
+xz2 = "0.1"
+
+[profile.release]
+lto = true
+strip = true

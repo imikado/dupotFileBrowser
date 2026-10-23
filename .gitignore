@@ -1,8 +1,13 @@
-*__pycache__*
-*.pyc
-.env
-.vscode/launch.json
+# Rust
+/target
+/result
+
+# packaging
+/build-dir
+/repo
 .flatpak-builder/
-build-dir/
-repo/
 *.flatpak
+/export/flatpak/.*.generated.yml
+
+# misc
+.env

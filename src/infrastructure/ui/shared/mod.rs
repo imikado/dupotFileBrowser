@@ -1,0 +1,11 @@
+pub mod alert_dialog;
+pub mod color_picker_popup;
+pub mod compress_dialog;
+pub mod context_menu;
+pub mod entry_menu;
+pub mod file_icons;
+pub mod open_with_popup;
+pub mod properties_dialog;
+pub mod rename_dialog;
+pub mod side_menu;
+pub mod view_mode_switcher;
