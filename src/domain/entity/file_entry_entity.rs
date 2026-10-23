@@ -79,14 +79,6 @@ pub struct FileEntryEntity {
 }
 
 impl FileEntryEntity {
-    pub fn display_name(&self) -> String {
-        if self.is_dir {
-            format!("{}/", self.name)
-        } else {
-            self.name.clone()
-        }
-    }
-
     pub fn is_hidden(&self) -> bool {
         self.name.starts_with('.')
     }

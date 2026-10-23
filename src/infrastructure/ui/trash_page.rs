@@ -11,6 +11,7 @@ use crate::domain::shared::trash_info::format_deletion_date;
 use crate::infrastructure::service::i18n_service::{tr, trf};
 use crate::infrastructure::ui::app_context::AppContext;
 use crate::infrastructure::ui::shared::alert_dialog::{show_confirm, show_error};
+use crate::infrastructure::ui::shared::empty_state::{EMPTY_TRASH_ICON, empty_state};
 use crate::infrastructure::ui::shared::file_icons::small_icon;
 
 type RowAction = fn(&TrashPage, &TrashEntryEntity);
@@ -57,10 +58,7 @@ impl TrashPage {
         scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
         scroll.set_child(Some(&list_box));
 
-        let empty = gtk::Label::new(Some(&tr("Trash is empty")));
-        empty.add_css_class("dim-label");
-        empty.set_valign(gtk::Align::Start);
-        empty.set_margin_top(24);
+        let empty = empty_state(EMPTY_TRASH_ICON, &tr("Trash is empty"));
 
         let stack = gtk::Stack::new();
         stack.set_vexpand(true);
@@ -119,12 +117,16 @@ impl TrashPage {
         row.add_prefix(&small_icon(entry.icon_key()));
 
         let buttons: [(&str, String, RowAction); 2] = [
-            ("edit-undo", tr("Restore"), Self::restore),
-            ("user-trash", tr("Delete Permanently"), Self::confirm_delete),
+            ("edit-undo-symbolic", tr("Restore"), Self::restore),
+            (
+                "user-trash-symbolic",
+                tr("Delete Permanently"),
+                Self::confirm_delete,
+            ),
         ];
         for (icon, tooltip, action) in buttons {
             let button = gtk::Button::new();
-            button.set_child(Some(&small_icon(icon)));
+            button.set_icon_name(icon);
             button.set_tooltip_text(Some(&tooltip));
             button.add_css_class("flat");
             button.set_valign(gtk::Align::Center);

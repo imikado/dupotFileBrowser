@@ -8,6 +8,7 @@ use gtk::{gdk, gio, glib};
 
 use crate::domain::entity::file_entry_entity::FileEntryEntity;
 use crate::domain::entity::file_operation_entity::FileOperationEntity;
+use crate::domain::shared::path::{file_name, parent_dir};
 use crate::infrastructure::service::i18n_service::{tr, trf};
 use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink};
 use crate::infrastructure::ui::shared::alert_dialog::{show_confirm, show_error};
@@ -81,6 +82,22 @@ pub fn copy_file_to_clipboard(widget: &impl IsA<gtk::Widget>, path: &Path, cut: 
 
 pub fn copy_text_to_clipboard(widget: &impl IsA<gtk::Widget>, text: &str) {
     widget.clipboard().set_text(text);
+}
+
+/// Opens `path` with its default application, telling the user when that
+/// fails (no application for the type, missing file…).
+pub fn open_file(parent: &impl IsA<gtk::Widget>, ctx: &AppContext, path: &Path) {
+    if let Err(error) = ctx.desktop.open_path(path) {
+        let body = trf(
+            "\"{name}\" could not be opened.",
+            &[("name", &file_name(path))],
+        );
+        show_error(
+            parent,
+            &tr("Could not open file"),
+            &format!("{body}\n\n{error}"),
+        );
+    }
 }
 
 /// Sets the wallpaper off the main thread (several host commands).
@@ -182,8 +199,10 @@ pub fn show_entry_menu(
     }));
     items.push(item(tr("Rename"), |t| {
         let target = t.clone();
-        let on_renamed: Rc<dyn Fn(PathBuf)> =
-            Rc::new(move |destination| (target.hooks.renamed)(&target.entry, destination));
+        let on_renamed: Rc<dyn Fn(PathBuf)> = Rc::new(move |destination| {
+            (target.hooks.renamed)(&target.entry, destination);
+            (target.events)(BrowserEvent::FolderChanged(parent_dir(&target.entry.path)));
+        });
         show_rename_dialog(&t.anchor, &t.ctx, &t.entry.path, None, on_renamed);
     }));
     items.push(item(tr("Add Color"), |t| {
@@ -221,7 +240,11 @@ fn confirm_trash(target: &Rc<Target>) {
         move || {
             let t = &target_for_action;
             match t.ctx.trash.trash(&t.entry.path) {
-                Ok(()) => (t.hooks.trashed)(&t.entry),
+                Ok(()) => {
+                    (t.hooks.trashed)(&t.entry);
+                    (t.events)(BrowserEvent::FolderChanged(parent_dir(&t.entry.path)));
+                    (t.events)(BrowserEvent::FolderChanged(t.ctx.trash.trash_dir()));
+                }
                 Err(_) => show_error(
                     &t.anchor,
                     &tr("Could not move to Trash"),

@@ -1,4 +1,5 @@
-//! Left sidebar: Home, Trash, host folders and favorites.
+//! Left sidebar: Home, Trash, host folders and favorites, under section
+//! headings.
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -9,12 +10,12 @@ use gtk::{gdk, glib};
 
 use crate::infrastructure::service::i18n_service::tr;
 use crate::infrastructure::ui::shared::context_menu::{MenuItem, show_context_menu};
-use crate::infrastructure::ui::shared::file_icons::small_icon;
 
 pub type PathCallback = Rc<dyn Fn(PathBuf)>;
 
 pub struct SideMenuItem {
-    pub icon_key: &'static str,
+    /// Symbolic icon, like the rest of the window chrome.
+    pub icon_name: &'static str,
     pub label: String,
     pub path: PathBuf,
     pub on_activate: PathCallback,
@@ -22,9 +23,14 @@ pub struct SideMenuItem {
     pub on_remove: Option<PathCallback>,
 }
 
+pub enum SideMenuEntry {
+    Heading(String),
+    Item(SideMenuItem),
+}
+
 pub struct SideMenu {
     list_box: gtk::ListBox,
-    /// One per row; `None` for a separator.
+    /// One per row; `None` for a heading.
     items: RefCell<Vec<Option<Rc<SideMenuItem>>>>,
 }
 
@@ -32,6 +38,7 @@ impl SideMenu {
     pub fn new() -> Rc<Self> {
         let list_box = gtk::ListBox::new();
         list_box.add_css_class("navigation-sidebar");
+        list_box.add_css_class("fb-side-menu");
         list_box.set_selection_mode(gtk::SelectionMode::Single);
         list_box.set_vexpand(true);
         let menu = Rc::new(Self {
@@ -58,17 +65,21 @@ impl SideMenu {
         &self.list_box
     }
 
-    /// `None` entries are drawn as separators.
-    pub fn set_items(&self, items: Vec<Option<SideMenuItem>>) {
+    pub fn set_entries(&self, entries: Vec<SideMenuEntry>) {
         self.list_box.remove_all();
-        let items: Vec<Option<Rc<SideMenuItem>>> =
-            items.into_iter().map(|item| item.map(Rc::new)).collect();
-        for item in &items {
-            let row = match item {
-                Some(item) => item_row(item),
-                None => separator_row(),
-            };
-            self.list_box.append(&row);
+        let mut items = Vec::with_capacity(entries.len());
+        for entry in entries {
+            match entry {
+                SideMenuEntry::Heading(title) => {
+                    self.list_box.append(&heading_row(&title));
+                    items.push(None);
+                }
+                SideMenuEntry::Item(item) => {
+                    let item = Rc::new(item);
+                    self.list_box.append(&item_row(&item));
+                    items.push(Some(item));
+                }
+            }
         }
         *self.items.borrow_mut() = items;
     }
@@ -86,29 +97,25 @@ impl SideMenu {
     }
 }
 
-fn separator_row() -> gtk::ListBoxRow {
+fn heading_row(title: &str) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
     row.set_selectable(false);
     row.set_activatable(false);
     row.set_can_focus(false);
-    row.add_css_class("fb-separator-row");
-    let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
-    separator.set_margin_top(6);
-    separator.set_margin_bottom(6);
-    separator.set_margin_start(12);
-    separator.set_margin_end(12);
-    row.set_child(Some(&separator));
+    row.add_css_class("fb-heading-row");
+    let label = gtk::Label::new(Some(title));
+    label.add_css_class("heading");
+    label.add_css_class("dim-label");
+    label.set_halign(gtk::Align::Start);
+    label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    row.set_child(Some(&label));
     row
 }
 
 fn item_row(item: &Rc<SideMenuItem>) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
     let content = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    content.set_margin_top(8);
-    content.set_margin_bottom(8);
-    content.set_margin_start(12);
-    content.set_margin_end(12);
-    content.append(&small_icon(item.icon_key));
+    content.append(&gtk::Image::from_icon_name(item.icon_name));
     let label = gtk::Label::new(Some(&item.label));
     label.set_halign(gtk::Align::Start);
     label.set_ellipsize(gtk::pango::EllipsizeMode::End);

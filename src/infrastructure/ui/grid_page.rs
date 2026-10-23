@@ -12,7 +12,10 @@ use gtk::{gdk, glib, pango};
 use crate::domain::entity::file_entry_entity::FileEntryEntity;
 use crate::infrastructure::service::i18n_service::tr;
 use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink};
-use crate::infrastructure::ui::shared::entry_menu::{show_entry_menu, single_folder_hooks};
+use crate::infrastructure::ui::shared::empty_state::{EMPTY_FOLDER_ICON, empty_state};
+use crate::infrastructure::ui::shared::entry_menu::{
+    open_file, show_entry_menu, single_folder_hooks,
+};
 use crate::infrastructure::ui::shared::file_icons::{folder_image, icon_image, thumbnail};
 
 const TILE_PADDING: i32 = 24;
@@ -53,10 +56,7 @@ impl GridPage {
         scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
         scroll.set_child(Some(&flow_box));
 
-        let empty = gtk::Label::new(Some(&tr("Empty folder")));
-        empty.add_css_class("dim-label");
-        empty.set_valign(gtk::Align::Start);
-        empty.set_margin_top(24);
+        let empty = empty_state(EMPTY_FOLDER_ICON, &tr("Empty folder"));
 
         let stack = gtk::Stack::new();
         stack.set_vexpand(true);
@@ -150,7 +150,7 @@ impl GridPage {
         icon.set_halign(gtk::Align::Center);
         content.append(&icon);
 
-        let label = gtk::Label::new(Some(&entry.display_name()));
+        let label = gtk::Label::new(Some(&entry.name));
         label.set_justify(gtk::Justification::Center);
         label.set_wrap(true);
         label.set_wrap_mode(pango::WrapMode::WordChar);
@@ -158,7 +158,7 @@ impl GridPage {
         label.set_ellipsize(pango::EllipsizeMode::End);
         // Wrap to the tile's width rather than the text's natural width.
         label.set_max_width_chars(1);
-        label.set_tooltip_text(Some(&entry.display_name()));
+        label.set_tooltip_text(Some(&entry.name));
         content.append(&label);
 
         let child = gtk::FlowBoxChild::new();
@@ -186,7 +186,7 @@ impl GridPage {
             self.load_path(&entry.path);
             (self.events)(BrowserEvent::PathChanged(entry.path.clone()));
         } else {
-            let _ = self.ctx.desktop.open_path(&entry.path);
+            open_file(&self.stack, &self.ctx, &entry.path);
         }
     }
 

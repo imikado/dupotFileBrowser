@@ -706,3 +706,45 @@ msgstr "Could not copy \"{name}\" to this folder."
 
 #~ msgid "Switch to dark mode"
 #~ msgstr "Switch to dark mode"
+
+#, python-brace-format
+msgid "\"{name}\" moved"
+msgstr "\"{name}\" moved"
+
+#, python-brace-format
+msgid "\"{name}\" compressed"
+msgstr "\"{name}\" compressed"
+
+#, python-brace-format
+msgid "\"{name}\" extracted"
+msgstr "\"{name}\" extracted"
+
+#, python-brace-format
+msgid "\"{name}\" copied"
+msgstr "\"{name}\" copied"
+
+msgid "Show sidebar"
+msgstr "Show sidebar"
+
+msgid "Places"
+msgstr "Places"
+
+msgid "Favorites"
+msgstr "Favorites"
+
+msgid "Main menu"
+msgstr "Main menu"
+
+msgid "Cannot paste here"
+msgstr "Cannot paste here"
+
+#, python-brace-format
+msgid "\"{name}\" cannot be pasted into itself or one of its subfolders."
+msgstr "\"{name}\" cannot be pasted into itself or one of its subfolders."
+
+msgid "Could not open file"
+msgstr "Could not open file"
+
+#, python-brace-format
+msgid "\"{name}\" could not be opened."
+msgstr "\"{name}\" could not be opened."

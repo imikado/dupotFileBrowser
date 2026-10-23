@@ -21,12 +21,6 @@ fn folder(name: &str) -> FileEntryEntity {
 }
 
 #[test]
-fn display_name_marks_folders() {
-    assert_eq!(folder("Music").display_name(), "Music/");
-    assert_eq!(file("a.txt").display_name(), "a.txt");
-}
-
-#[test]
 fn icon_key_from_extension_ignoring_case() {
     assert_eq!(file("photo.JPG").icon_key(), "image");
     assert_eq!(file("song.flac").icon_key(), "audio");

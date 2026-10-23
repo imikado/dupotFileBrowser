@@ -22,8 +22,10 @@ use crate::infrastructure::ui::browser_tab::{BrowserTab, TabEventSink};
 use crate::infrastructure::ui::menu::parameters_dialog::{SettingsChanges, show_parameters_dialog};
 use crate::infrastructure::ui::shared::alert_dialog::{ask_name, show_error};
 use crate::infrastructure::ui::shared::color_picker_popup::palette_css;
-use crate::infrastructure::ui::shared::file_icons::{self, small_icon};
-use crate::infrastructure::ui::shared::side_menu::{PathCallback, SideMenu, SideMenuItem};
+use crate::infrastructure::ui::shared::file_icons;
+use crate::infrastructure::ui::shared::side_menu::{
+    PathCallback, SideMenu, SideMenuEntry, SideMenuItem,
+};
 use crate::infrastructure::ui::shared::view_mode_switcher::build_view_mode_switcher;
 
 const APP_CSS: &str = "
@@ -41,13 +43,25 @@ button.fb-menu-item {
     min-width: 160px;
 }
 
-row.fb-separator-row {
+/* Denser rows, closer to Nemo / Nautilus. */
+.navigation-sidebar.fb-side-menu > row {
+    min-height: 30px;
+    margin-bottom: 1px;
+}
+
+row.fb-heading-row {
     background: none;
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    margin: 0;
     min-height: 0;
+    padding: 12px 8px 4px 8px;
+}
+
+box.fb-header {
+    min-height: 46px;
+    padding: 0 6px;
+}
+
+list.fb-column-list > row {
+    padding: 4px 10px;
 }
 
 .fb-color-dot {
@@ -64,7 +78,15 @@ button.fb-swatch-selected {
 }
 ";
 
-const SIDEBAR_WIDTH: i32 = 220;
+const SIDEBAR_WIDTH: f64 = 220.0;
+const SIDEBAR_MAX_WIDTH: f64 = 280.0;
+/// Below this width the sidebar turns into an overlay.
+const COLLAPSE_SIDEBAR_CONDITION: &str = "max-width: 600sp";
+const MIN_WINDOW_SIZE: (i32, i32) = (360, 300);
+const TOAST_TIMEOUT_SECS: u32 = 3;
+/// Installed by the Flatpak / Nix packages; embedded for source builds.
+const APP_ICON_PNG: &[u8] = include_bytes!("../../assets/logo512.png");
+
 const SAVE_WINDOW_SIZE_DELAY: Duration = Duration::from_millis(500);
 const GRID_ICON_SIZE_DELAY: Duration = Duration::from_millis(150);
 
@@ -80,10 +102,33 @@ fn install_app_css() {
     }
 }
 
+/// Makes `APP.id` resolvable as an icon name (About dialog, window icon)
+/// when the packages did not install it, by writing the embedded logo to
+/// the cache and adding that folder to the icon theme's search path.
+fn install_app_icon() {
+    let Some(display) = gdk::Display::default() else {
+        return;
+    };
+    let theme = gtk::IconTheme::for_display(&display);
+    if !theme.has_icon(APP.id) {
+        let dir = glib::user_cache_dir().join(APP.id).join("icons");
+        let written = std::fs::create_dir_all(&dir)
+            .and_then(|()| std::fs::write(dir.join(format!("{}.png", APP.id)), APP_ICON_PNG));
+        match written {
+            Ok(()) => theme.add_search_path(&dir),
+            Err(error) => eprintln!("could not install the app icon: {error}"),
+        }
+    }
+    gtk::Window::set_default_icon_name(APP.id);
+}
+
 pub fn build_application() -> adw::Application {
     gvfs_service::ensure_metadata_module_discoverable();
     let app = adw::Application::builder().application_id(APP.id).build();
-    app.connect_startup(|_| install_app_css());
+    app.connect_startup(|_| {
+        install_app_css();
+        install_app_icon();
+    });
     app.connect_activate(|app| {
         if let Some(window) = app.active_window() {
             window.present();
@@ -93,7 +138,14 @@ pub fn build_application() -> adw::Application {
         let language = ctx.settings().language;
         i18n_service::init(&language.code(i18n_service::system_language_code()));
         file_icons::set_use_system_theme(ctx.settings().use_system_icon_theme);
-        MainWindow::new(app, ctx).window.present();
+        let main_window = MainWindow::new(app, ctx);
+        main_window.window.present();
+        // Every handler holds a weak ref: the window owns the only strong
+        // one, released when it is destroyed.
+        let owner = RefCell::new(Some(main_window.clone()));
+        main_window.window.connect_destroy(move |_| {
+            owner.take();
+        });
     });
     app
 }
@@ -122,6 +174,9 @@ struct MainWindow {
     path_entry: gtk::Entry,
     menu_button: gtk::MenuButton,
     paste_slot: gtk::Box,
+    sidebar_button: gtk::ToggleButton,
+    split_view: adw::OverlaySplitView,
+    toast_overlay: adw::ToastOverlay,
     tab_view: adw::TabView,
     side_menu: Rc<SideMenu>,
     tabs: RefCell<Vec<(Rc<BrowserTab>, adw::TabPage)>>,
@@ -147,6 +202,7 @@ impl MainWindow {
         let window = adw::ApplicationWindow::new(app);
         window.set_title(Some(&tr("File browser")));
         window.set_default_size(width, height);
+        window.set_size_request(MIN_WINDOW_SIZE.0, MIN_WINDOW_SIZE.1);
 
         let home_path = ctx.file_system.home_dir();
         let trash_path = ctx.trash.trash_dir();
@@ -163,16 +219,20 @@ impl MainWindow {
             Vec::new()
         };
 
-        let up_button = gtk::Button::new();
+        let up_button = gtk::Button::from_icon_name("go-up-symbolic");
         up_button.set_tooltip_text(Some(&tr("Parent folder")));
         let path_entry = gtk::Entry::new();
         path_entry.set_hexpand(true);
-        path_entry.add_css_class("flat");
         path_entry.set_tooltip_text(Some(&tr("Type a path and press Enter to go there")));
+        let sidebar_button = gtk::ToggleButton::new();
+        sidebar_button.set_icon_name("sidebar-show-symbolic");
+        sidebar_button.set_tooltip_text(Some(&tr("Show sidebar")));
         let menu = gio::Menu::new();
         menu.append(Some(&tr("Parameters")), Some("win.parameters"));
         menu.append(Some(&tr("About")), Some("win.about"));
         let menu_button = gtk::MenuButton::new();
+        menu_button.set_icon_name("open-menu-symbolic");
+        menu_button.set_tooltip_text(Some(&tr("Main menu")));
         menu_button.set_menu_model(Some(&menu));
 
         let tab_view = adw::TabView::new();
@@ -185,6 +245,9 @@ impl MainWindow {
             path_entry,
             menu_button,
             paste_slot: gtk::Box::new(gtk::Orientation::Horizontal, 0),
+            sidebar_button,
+            split_view: adw::OverlaySplitView::new(),
+            toast_overlay: adw::ToastOverlay::new(),
             tab_view,
             side_menu: SideMenu::new(),
             tabs: RefCell::default(),
@@ -200,7 +263,6 @@ impl MainWindow {
         this.build_layout();
         this.connect_signals();
         this.apply_theme();
-        this.refresh_header_icons();
         this.refresh_side_menu();
         let home = this.home_path.clone();
         this.new_tab(&home);
@@ -208,11 +270,6 @@ impl MainWindow {
     }
 
     fn build_layout(self: &Rc<Self>) {
-        let header = adw::HeaderBar::new();
-        header.pack_start(&self.up_button);
-        header.set_title_widget(Some(&self.path_entry));
-        header.pack_end(&self.paste_slot);
-
         let (mode, icon_size) = {
             let settings = self.ctx.settings();
             (settings.view_mode, settings.grid_icon_size)
@@ -232,49 +289,127 @@ impl MainWindow {
                 }
             },
         );
-        header.pack_end(&switcher);
-        header.pack_end(&self.menu_button);
-
-        let tab_bar = adw::TabBar::new();
-        tab_bar.set_view(Some(&self.tab_view));
-        // Keeps the "+" button reachable with a single tab.
-        tab_bar.set_autohide(false);
         let new_tab_button = gtk::Button::from_icon_name("tab-new-symbolic");
         new_tab_button.set_tooltip_text(Some(&tr("New Tab")));
         new_tab_button.set_action_name(Some("win.new-tab"));
-        tab_bar.set_end_action_widget(Some(&new_tab_button));
+        let header = self.build_header(&[
+            new_tab_button.upcast_ref(),
+            switcher.upcast_ref(),
+            self.menu_button.upcast_ref(),
+        ]);
 
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        content.set_hexpand(true);
-        content.set_vexpand(true);
-        content.append(&tab_bar);
-        content.append(&self.tab_view);
+        // Shown from the second tab on, as in Nemo.
+        let tab_bar = adw::TabBar::new();
+        tab_bar.set_view(Some(&self.tab_view));
+
+        let tabs = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        tabs.append(&tab_bar);
+        tabs.append(&self.tab_view);
+        let content = adw::ToolbarView::new();
+        content.add_top_bar(&header);
+        content.set_content(Some(&tabs));
 
         let sidebar = gtk::ScrolledWindow::new();
         sidebar.set_child(Some(self.side_menu.widget()));
         sidebar.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-        sidebar.set_size_request(SIDEBAR_WIDTH, -1);
-        sidebar.add_css_class("background");
+        // Each pane has its own header bar, so the sidebar's color reaches
+        // the top of the window (as in Nautilus).
+        let sidebar_header = adw::HeaderBar::new();
+        sidebar_header.set_title_widget(Some(&adw::WindowTitle::new(&tr("File browser"), "")));
+        let sidebar_pane = adw::ToolbarView::new();
+        sidebar_pane.add_top_bar(&sidebar_header);
+        sidebar_pane.set_content(Some(&sidebar));
 
-        let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        body.set_vexpand(true);
-        body.set_hexpand(true);
-        body.append(&sidebar);
-        body.append(&gtk::Separator::new(gtk::Orientation::Vertical));
-        body.append(&content);
+        let split_view = &self.split_view;
+        split_view.set_sidebar(Some(&sidebar_pane));
+        split_view.set_content(Some(&content));
+        split_view.set_min_sidebar_width(SIDEBAR_WIDTH);
+        split_view.set_max_sidebar_width(SIDEBAR_MAX_WIDTH);
+        split_view
+            .bind_property("show-sidebar", &self.sidebar_button, "active")
+            .bidirectional()
+            .sync_create()
+            .build();
+        // The toggle is only useful once the sidebar can hide.
+        split_view
+            .bind_property("collapsed", &self.sidebar_button, "visible")
+            .sync_create()
+            .build();
 
-        let toolbar_view = adw::ToolbarView::new();
-        toolbar_view.add_top_bar(&header);
-        toolbar_view.set_content(Some(&body));
-        self.window.set_content(Some(&toolbar_view));
+        let breakpoint = adw::Breakpoint::new(
+            adw::BreakpointCondition::parse(COLLAPSE_SIDEBAR_CONDITION)
+                .expect("valid breakpoint condition"),
+        );
+        breakpoint.add_setter(split_view, "collapsed", Some(&true.to_value()));
+        self.window.add_breakpoint(breakpoint);
+
+        self.toast_overlay.set_child(Some(split_view));
+        self.window.set_content(Some(&self.toast_overlay));
+    }
+
+    /// adw::HeaderBar keeps its title centered at its natural width: this
+    /// bar lets the path entry take all the room left by the buttons.
+    fn build_header(&self, end_widgets: &[&gtk::Widget]) -> gtk::WindowHandle {
+        let start_controls = gtk::WindowControls::new(gtk::PackType::Start);
+        let bar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        bar.add_css_class("fb-header");
+        bar.append(&start_controls);
+        for button in [
+            &self.sidebar_button.clone().upcast(),
+            &self.up_button.clone().upcast(),
+        ]
+        .into_iter()
+        .chain(end_widgets.iter().copied())
+        {
+            button.add_css_class("flat");
+        }
+        bar.append(&self.sidebar_button);
+        bar.append(&self.up_button);
+        bar.append(&self.path_entry);
+        bar.append(&self.paste_slot);
+        for widget in end_widgets {
+            bar.append(*widget);
+        }
+        bar.append(&gtk::WindowControls::new(gtk::PackType::End));
+        let mut child = bar.first_child();
+        while let Some(widget) = child {
+            widget.set_valign(gtk::Align::Center);
+            child = widget.next_sibling();
+        }
+
+        // The sidebar's own header bar holds the start controls while it is
+        // shown beside the content.
+        let split_view = &self.split_view;
+        let sync = {
+            let (split_view, controls) = (split_view.clone(), start_controls.clone());
+            move || {
+                controls.set_visible(split_view.is_collapsed() || !split_view.shows_sidebar());
+            }
+        };
+        sync();
+        let sync = Rc::new(sync);
+        for property in ["collapsed", "show-sidebar"] {
+            let sync = sync.clone();
+            split_view.connect_notify_local(Some(property), move |_, _| sync());
+        }
+
+        let handle = gtk::WindowHandle::new();
+        handle.set_child(Some(&bar));
+        handle
     }
 
     fn connect_signals(self: &Rc<Self>) {
-        let actions: [(&str, WindowAction); 4] = [
+        let actions: [(&str, WindowAction); 7] = [
             ("parameters", Self::show_parameters),
             ("about", Self::show_about),
             ("new-tab", Self::new_tab_from_active),
             ("close-tab", Self::close_active_tab),
+            ("go-up", |this| this.on_up_clicked()),
+            ("focus-path", Self::focus_path_entry),
+            ("toggle-sidebar", |this| {
+                let split_view = &this.split_view;
+                split_view.set_show_sidebar(!split_view.shows_sidebar());
+            }),
         ];
         for (name, callback) in actions {
             let action = gio::SimpleAction::new(name, None);
@@ -289,6 +424,10 @@ impl MainWindow {
         if let Some(app) = self.window.application() {
             app.set_accels_for_action("win.new-tab", &["<Control>t"]);
             app.set_accels_for_action("win.close-tab", &["<Control>w"]);
+            app.set_accels_for_action("win.go-up", &["<Alt>Up"]);
+            app.set_accels_for_action("win.focus-path", &["<Control>l"]);
+            app.set_accels_for_action("win.toggle-sidebar", &["F9"]);
+            app.set_accels_for_action("win.parameters", &["<Control>comma"]);
         }
 
         let weak = Rc::downgrade(self);
@@ -342,7 +481,6 @@ impl MainWindow {
         let weak = Rc::downgrade(self);
         adw::StyleManager::default().connect_dark_notify(move |_| {
             if let Some(this) = weak.upgrade() {
-                this.refresh_header_icons();
                 this.update_paste_button();
                 this.refresh_side_menu();
                 for tab in this.all_tabs() {
@@ -394,11 +532,6 @@ impl MainWindow {
         adw::StyleManager::default().set_color_scheme(scheme);
     }
 
-    fn refresh_header_icons(&self) {
-        self.up_button.set_child(Some(&small_icon("go-up")));
-        self.menu_button.set_child(Some(&small_icon("open-menu")));
-    }
-
     // --- Sidebar --------------------------------------------------------
 
     fn refresh_side_menu(self: &Rc<Self>) {
@@ -412,37 +545,52 @@ impl MainWindow {
         };
         let go_to = callback(Self::go_to_path);
         let item =
-            |icon_key, label: String, path: &Path, on_activate: &PathCallback| SideMenuItem {
-                icon_key,
+            |icon_name, label: String, path: &Path, on_activate: &PathCallback| SideMenuItem {
+                icon_name,
                 label,
                 path: path.to_path_buf(),
                 on_activate: on_activate.clone(),
                 on_remove: None,
             };
-        let mut items = vec![
-            Some(item("user-home", tr("Home"), &self.home_path, &go_to)),
-            Some(item(
-                "user-trash",
+        let mut entries = vec![
+            SideMenuEntry::Heading(tr("Places")),
+            SideMenuEntry::Item(item(
+                "user-home-symbolic",
+                tr("Home"),
+                &self.home_path,
+                &go_to,
+            )),
+            SideMenuEntry::Item(item(
+                "user-trash-symbolic",
                 tr("Trash"),
                 &self.trash_path,
                 &callback(|this, _| this.go_to_trash()),
             )),
         ];
         for (label, path) in &self.host_paths {
-            items.push(Some(item("folder", label.clone(), path, &go_to)));
+            entries.push(SideMenuEntry::Item(item(
+                "folder-symbolic",
+                label.clone(),
+                path,
+                &go_to,
+            )));
         }
         let favorites = self.ctx.settings().favorite_list.clone();
         if !favorites.is_empty() {
-            items.push(None);
+            entries.push(SideMenuEntry::Heading(tr("Favorites")));
             let remove = callback(Self::remove_favorite);
             for favorite in favorites {
-                let mut favorite_item =
-                    item("folder", favorite.label, Path::new(&favorite.path), &go_to);
+                let mut favorite_item = item(
+                    "folder-symbolic",
+                    favorite.label,
+                    Path::new(&favorite.path),
+                    &go_to,
+                );
                 favorite_item.on_remove = Some(remove.clone());
-                items.push(Some(favorite_item));
+                entries.push(SideMenuEntry::Item(favorite_item));
             }
         }
-        self.side_menu.set_items(items);
+        self.side_menu.set_entries(entries);
         self.side_menu
             .set_selected_path(&self.current_path.borrow());
     }
@@ -513,7 +661,8 @@ impl MainWindow {
         }
     }
 
-    fn on_tab_selected(&self) {
+    fn on_tab_selected(self: &Rc<Self>) {
+        self.update_paste_button();
         let Some(tab) = self.active_tab() else { return };
         if tab.showing_trash() {
             self.show_trash_state();
@@ -553,6 +702,15 @@ impl MainWindow {
                 }
             }
             BrowserEvent::FavoritesChanged => self.refresh_side_menu(),
+            BrowserEvent::FolderChanged(path) => {
+                for other in self
+                    .all_tabs()
+                    .iter()
+                    .filter(|other| !Rc::ptr_eq(other, tab))
+                {
+                    other.refresh_path(&path);
+                }
+            }
             BrowserEvent::Clipboard { path, cut } => {
                 *self.clipboard.borrow_mut() = Some((path, cut));
                 self.update_paste_button();
@@ -580,7 +738,22 @@ impl MainWindow {
         self.side_menu.set_selected_path(&self.trash_path);
     }
 
+    /// An overlaid sidebar would otherwise cover the folder just opened.
+    fn hide_overlaid_sidebar(&self) {
+        if self.split_view.is_collapsed() {
+            self.split_view.set_show_sidebar(false);
+        }
+    }
+
+    fn focus_path_entry(self: &Rc<Self>) {
+        if self.path_entry.is_sensitive() {
+            self.path_entry.grab_focus();
+            self.path_entry.select_region(0, -1);
+        }
+    }
+
     fn go_to_path(self: &Rc<Self>, path: PathBuf) {
+        self.hide_overlaid_sidebar();
         let Some(tab) = self.active_tab() else { return };
         tab.navigate(&path, false);
         self.update_tab_title(&tab);
@@ -589,10 +762,12 @@ impl MainWindow {
     }
 
     fn go_to_trash(self: &Rc<Self>) {
+        self.hide_overlaid_sidebar();
         let Some(tab) = self.active_tab() else { return };
         tab.go_to_trash();
         self.update_tab_title(&tab);
         self.show_trash_state();
+        self.update_paste_button();
     }
 
     fn on_up_clicked(&self) {
@@ -657,6 +832,10 @@ impl MainWindow {
             self.paste_slot.append(&pending_button(pending));
             return;
         }
+        // The Trash folder is no paste target: files need a .trashinfo.
+        if self.active_tab().is_some_and(|tab| tab.showing_trash()) {
+            return;
+        }
         let Some((path, cut)) = self.clipboard.borrow().clone() else {
             return;
         };
@@ -687,6 +866,18 @@ impl MainWindow {
 
     fn request_paste(self: &Rc<Self>, source: &Path, cut: bool, name: Option<&str>) {
         let folder = self.current_path.borrow().clone();
+        // Copying a folder into itself would never end.
+        if folder.starts_with(source) {
+            show_error(
+                &self.window,
+                &tr("Cannot paste here"),
+                &trf(
+                    "\"{name}\" cannot be pasted into itself or one of its subfolders.",
+                    &[("name", &file_name(source))],
+                ),
+            );
+            return;
+        }
         match paste_destination(self.ctx.file_system.as_ref(), &folder, source, name) {
             Destination::Free(destination) => {
                 self.enqueue_job(FileOperationEntity::paste(source, &destination, cut))
@@ -782,6 +973,10 @@ impl MainWindow {
                         tab.refresh_path(&target);
                     }
                 }
+                let toast =
+                    adw::Toast::new(&trf(job.success_message(), &[("name", &job.source_name())]));
+                toast.set_timeout(TOAST_TIMEOUT_SECS);
+                self.toast_overlay.add_toast(toast);
             }
             Err(error) => {
                 let (heading, body) = job.error_messages();
@@ -831,7 +1026,7 @@ fn pending_button(count: usize) -> gtk::Button {
     badge.set_halign(gtk::Align::End);
     badge.set_valign(gtk::Align::Start);
     let overlay = gtk::Overlay::new();
-    overlay.set_child(Some(&small_icon("edit-paste")));
+    overlay.set_child(Some(&gtk::Image::from_icon_name("edit-paste-symbolic")));
     overlay.add_overlay(&badge);
     let button = gtk::Button::new();
     button.add_css_class("flat");

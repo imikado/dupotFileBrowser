@@ -66,6 +66,17 @@ impl FileOperationEntity {
         }
     }
 
+    /// Untranslated toast shown once the job succeeded, with a `{name}`
+    /// placeholder for `self.source_name()`.
+    pub fn success_message(&self) -> &'static str {
+        match self.kind {
+            FileOperationKind::Move => "\"{name}\" moved",
+            FileOperationKind::Compress(_) => "\"{name}\" compressed",
+            FileOperationKind::Extract => "\"{name}\" extracted",
+            FileOperationKind::Copy => "\"{name}\" copied",
+        }
+    }
+
     pub fn source_name(&self) -> String {
         file_name(&self.source)
     }

@@ -6,15 +6,16 @@ use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 
-use adw::prelude::*;
-use gtk::{gdk, glib};
+use gtk::prelude::*;
+use gtk::{gdk, glib, pango};
 
 use crate::domain::entity::file_entry_entity::FileEntryEntity;
 use crate::domain::shared::path::{ancestor_chain, parent_dir};
 use crate::infrastructure::service::i18n_service::tr;
 use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink};
 use crate::infrastructure::ui::shared::color_picker_popup::swatch_class;
-use crate::infrastructure::ui::shared::entry_menu::{EntryMenuHooks, show_entry_menu};
+use crate::infrastructure::ui::shared::empty_state::{EMPTY_FOLDER_ICON, empty_state};
+use crate::infrastructure::ui::shared::entry_menu::{EntryMenuHooks, open_file, show_entry_menu};
 use crate::infrastructure::ui::shared::file_icons::{ICON_DISPLAY_SIZE, folder_image, small_icon};
 
 const COLUMN_WIDTH: i32 = 260;
@@ -30,7 +31,8 @@ type Row = (FileEntryEntity, Option<String>);
 
 struct Column {
     path: PathBuf,
-    frame: gtk::Frame,
+    /// The column with its right-hand separator.
+    root: gtk::Box,
     list_box: gtk::ListBox,
     stack: gtk::Stack,
     rows: RefCell<Vec<Row>>,
@@ -41,35 +43,29 @@ struct Column {
 impl Column {
     fn new(path: &Path, page: &Weak<PathPage>) -> Rc<Self> {
         let list_box = gtk::ListBox::new();
-        list_box.add_css_class("navigation-sidebar");
+        list_box.add_css_class("fb-column-list");
         list_box.set_selection_mode(gtk::SelectionMode::Single);
-        list_box.set_margin_top(6);
-        list_box.set_margin_bottom(6);
 
         let scroll = gtk::ScrolledWindow::new();
         scroll.set_vexpand(true);
         scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
         scroll.set_child(Some(&list_box));
 
-        let empty = gtk::Label::new(Some(&tr("Empty folder")));
-        empty.add_css_class("dim-label");
-        empty.set_valign(gtk::Align::Start);
-        empty.set_margin_top(24);
+        let empty = empty_state(EMPTY_FOLDER_ICON, &tr("Empty folder"));
 
         let stack = gtk::Stack::new();
         stack.set_vexpand(true);
         stack.add_named(&scroll, Some("list"));
         stack.add_named(&empty, Some("empty"));
 
-        let frame = gtk::Frame::new(None);
-        frame.add_css_class("background");
-        frame.set_size_request(COLUMN_WIDTH, -1);
-        frame.set_vexpand(true);
-        frame.set_child(Some(&stack));
+        stack.set_size_request(COLUMN_WIDTH, -1);
+        let root = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        root.append(&stack);
+        root.append(&gtk::Separator::new(gtk::Orientation::Vertical));
 
         let column = Rc::new(Self {
             path: path.to_path_buf(),
-            frame,
+            root,
             list_box,
             stack,
             rows: RefCell::default(),
@@ -91,21 +87,28 @@ impl Column {
     fn set_rows(self: &Rc<Self>, rows: Vec<Row>, page: &Weak<PathPage>) {
         self.list_box.remove_all();
         for (index, (entry, color)) in rows.iter().enumerate() {
-            let row = adw::ActionRow::new();
-            row.set_title(&glib::markup_escape_text(&entry.display_name()));
-            row.set_title_lines(1);
-            // Titles are cut to one line: the tooltip shows long names whole.
-            row.set_tooltip_text(Some(&entry.display_name()));
-            row.set_activatable(true);
-            if entry.is_dir {
-                row.add_prefix(&folder_image(color.as_deref(), ICON_DISPLAY_SIZE));
-                row.add_suffix(&small_icon("go-next"));
+            let content = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            content.append(&if entry.is_dir {
+                folder_image(color.as_deref(), ICON_DISPLAY_SIZE)
             } else {
-                row.add_prefix(&small_icon(entry.icon_key()));
-                if let Some(color) = color {
-                    row.add_suffix(&color_dot(color));
-                }
+                small_icon(entry.icon_key())
+            });
+            let label = gtk::Label::new(Some(&entry.name));
+            label.set_halign(gtk::Align::Start);
+            label.set_hexpand(true);
+            label.set_ellipsize(pango::EllipsizeMode::Middle);
+            content.append(&label);
+            if entry.is_dir {
+                let chevron = gtk::Image::from_icon_name("go-next-symbolic");
+                chevron.add_css_class("dim-label");
+                content.append(&chevron);
+            } else if let Some(color) = color {
+                content.append(&color_dot(color));
             }
+            let row = gtk::ListBoxRow::new();
+            row.set_child(Some(&content));
+            // Names are cut to one line: the tooltip shows long ones whole.
+            row.set_tooltip_text(Some(&entry.name));
             self.attach_gestures(&row, index, page);
             self.list_box.append(&row);
         }
@@ -114,7 +117,12 @@ impl Column {
         *self.rows.borrow_mut() = rows;
     }
 
-    fn attach_gestures(self: &Rc<Self>, row: &adw::ActionRow, index: usize, page: &Weak<PathPage>) {
+    fn attach_gestures(
+        self: &Rc<Self>,
+        row: &gtk::ListBoxRow,
+        index: usize,
+        page: &Weak<PathPage>,
+    ) {
         // Files open on a double click; a single click only selects them.
         let left = gtk::GestureClick::new();
         left.set_button(gdk::BUTTON_PRIMARY);
@@ -243,13 +251,13 @@ impl PathPage {
 
     fn push_column(&self, path: &Path) {
         let column = self.new_column(path);
-        self.columns_box.append(&column.frame);
+        self.columns_box.append(&column.root);
         self.columns.borrow_mut().push(column);
     }
 
     fn reset_columns(&self) {
         for column in self.columns.borrow_mut().drain(..) {
-            self.columns_box.remove(&column.frame);
+            self.columns_box.remove(&column.root);
         }
     }
 
@@ -298,7 +306,7 @@ impl PathPage {
         let column = self.new_column(&parent);
         column.select_path(&leftmost);
         self.columns_box
-            .insert_child_after(&column.frame, None::<&gtk::Widget>);
+            .insert_child_after(&column.root, None::<&gtk::Widget>);
         self.columns.borrow_mut().insert(0, column);
         (self.events)(BrowserEvent::PathChanged(parent.clone()));
         self.scroll_to(false);
@@ -327,7 +335,7 @@ impl PathPage {
         let mut columns = self.columns.borrow_mut();
         if let Some(index) = columns.iter().position(|c| Rc::ptr_eq(c, column)) {
             for stale in columns.drain(index + 1..) {
-                self.columns_box.remove(&stale.frame);
+                self.columns_box.remove(&stale.root);
             }
         }
     }
@@ -345,7 +353,7 @@ impl PathPage {
     fn open_entry(&self, column: &Rc<Column>, entry: &FileEntryEntity) {
         self.drop_stale_columns(column);
         if !entry.is_dir {
-            let _ = self.ctx.desktop.open_path(&entry.path);
+            open_file(&column.root, &self.ctx, &entry.path);
             (self.events)(BrowserEvent::PathChanged(column.path.clone()));
             return;
         }

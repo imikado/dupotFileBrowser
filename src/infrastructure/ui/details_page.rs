@@ -13,7 +13,10 @@ use crate::domain::entity::file_entry_entity::{FileEntryEntity, TypeLabel};
 use crate::domain::usecase::list_directory::compare_by;
 use crate::infrastructure::service::i18n_service::{tr, trf};
 use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink};
-use crate::infrastructure::ui::shared::entry_menu::{show_entry_menu, single_folder_hooks};
+use crate::infrastructure::ui::shared::empty_state::{EMPTY_FOLDER_ICON, empty_state};
+use crate::infrastructure::ui::shared::entry_menu::{
+    open_file, show_entry_menu, single_folder_hooks,
+};
 use crate::infrastructure::ui::shared::file_icons::{ICON_DISPLAY_SIZE, folder_image, small_icon};
 use crate::infrastructure::ui::shared::properties_dialog::format_timestamp;
 
@@ -76,10 +79,7 @@ impl DetailsPage {
         scroll.set_hexpand(true);
         scroll.set_child(Some(&column_view));
 
-        let empty = gtk::Label::new(Some(&tr("Empty folder")));
-        empty.add_css_class("dim-label");
-        empty.set_valign(gtk::Align::Start);
-        empty.set_margin_top(24);
+        let empty = empty_state(EMPTY_FOLDER_ICON, &tr("Empty folder"));
 
         let stack = gtk::Stack::new();
         stack.set_vexpand(true);
@@ -133,8 +133,8 @@ impl DetailsPage {
                     small_icon(row.entry.icon_key())
                 };
                 icon_slot.append(&icon);
-                label.set_label(&row.entry.display_name());
-                label.set_tooltip_text(Some(&row.entry.display_name()));
+                label.set_label(&row.entry.name);
+                label.set_tooltip_text(Some(&row.entry.name));
             },
         );
         self.add_column(
@@ -260,7 +260,7 @@ impl DetailsPage {
             self.load_path(&entry.path);
             (self.events)(BrowserEvent::PathChanged(entry.path.clone()));
         } else {
-            let _ = self.ctx.desktop.open_path(&entry.path);
+            open_file(&self.stack, &self.ctx, &entry.path);
         }
     }
 

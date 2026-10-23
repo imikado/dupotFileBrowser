@@ -714,3 +714,45 @@ msgstr "Impossibile copiare \"{name}\" in questa cartella."
 
 #~ msgid "Switch to dark mode"
 #~ msgstr "Passa alla modalità scura"
+
+#, python-brace-format
+msgid "\"{name}\" moved"
+msgstr "\"{name}\" spostato"
+
+#, python-brace-format
+msgid "\"{name}\" compressed"
+msgstr "\"{name}\" compresso"
+
+#, python-brace-format
+msgid "\"{name}\" extracted"
+msgstr "\"{name}\" estratto"
+
+#, python-brace-format
+msgid "\"{name}\" copied"
+msgstr "\"{name}\" copiato"
+
+msgid "Show sidebar"
+msgstr "Mostra la barra laterale"
+
+msgid "Places"
+msgstr "Posizioni"
+
+msgid "Favorites"
+msgstr "Preferiti"
+
+msgid "Main menu"
+msgstr "Menu principale"
+
+msgid "Cannot paste here"
+msgstr "Impossibile incollare qui"
+
+#, python-brace-format
+msgid "\"{name}\" cannot be pasted into itself or one of its subfolders."
+msgstr "\"{name}\" non può essere incollato in sé stesso o in una sua sottocartella."
+
+msgid "Could not open file"
+msgstr "Impossibile aprire il file"
+
+#, python-brace-format
+msgid "\"{name}\" could not be opened."
+msgstr "Impossibile aprire \"{name}\"."

@@ -2,6 +2,7 @@ pub mod alert_dialog;
 pub mod color_picker_popup;
 pub mod compress_dialog;
 pub mod context_menu;
+pub mod empty_state;
 pub mod entry_menu;
 pub mod file_icons;
 pub mod open_with_popup;

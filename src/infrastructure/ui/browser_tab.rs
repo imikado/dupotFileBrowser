@@ -130,6 +130,9 @@ impl BrowserTab {
     }
 
     pub fn refresh_path(&self, path: &Path) {
+        if self.showing_trash() && path == self.ctx.trash.trash_dir() {
+            self.trash_page.refresh();
+        }
         self.path_page.refresh_path(path);
         self.grid_page.refresh_path(path);
         self.details_page.refresh_path(path);

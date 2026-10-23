@@ -30,6 +30,9 @@ pub enum BrowserEvent {
     /// The view now shows this folder.
     PathChanged(PathBuf),
     FavoritesChanged,
+    /// The listing of this folder changed (rename, trash): other tabs
+    /// showing it reload.
+    FolderChanged(PathBuf),
     /// Copy (or cut) put this file on the clipboard.
     Clipboard {
         path: PathBuf,

@@ -132,3 +132,19 @@ msgstr ""
 #, python-brace-format
 msgid "Could not copy \"{name}\" to this folder."
 msgstr ""
+
+#, python-brace-format
+msgid "\"{name}\" moved"
+msgstr ""
+
+#, python-brace-format
+msgid "\"{name}\" compressed"
+msgstr ""
+
+#, python-brace-format
+msgid "\"{name}\" extracted"
+msgstr ""
+
+#, python-brace-format
+msgid "\"{name}\" copied"
+msgstr ""
