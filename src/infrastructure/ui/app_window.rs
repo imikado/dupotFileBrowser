@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use adw::prelude::*;
@@ -13,7 +13,7 @@ use crate::domain::entity::app_info::APP;
 use crate::domain::entity::file_operation_entity::{FileOperationEntity, FileOperationKind};
 use crate::domain::entity::user_settings_entity::{Theme, ViewMode};
 use crate::domain::error::{DomainError, DomainResult};
-use crate::domain::shared::path::file_name;
+use crate::domain::shared::path::{file_name, parent_dir};
 use crate::domain::usecase::destination::{Destination, extract_destination, paste_destination};
 use crate::infrastructure::service::gvfs_service;
 use crate::infrastructure::service::i18n_service::{self, tr, trf};
@@ -124,30 +124,49 @@ fn install_app_icon() {
 
 pub fn build_application() -> adw::Application {
     gvfs_service::ensure_metadata_module_discoverable();
-    let app = adw::Application::builder().application_id(APP.id).build();
+    let app = adw::Application::builder()
+        .application_id(APP.id)
+        .flags(gio::ApplicationFlags::HANDLES_OPEN)
+        .build();
     app.connect_startup(|_| {
         install_app_css();
         install_app_icon();
     });
-    app.connect_activate(|app| {
-        if let Some(window) = app.active_window() {
-            window.present();
-            return;
+    app.connect_activate(|app| main_window(app).window.present());
+    // `dupot-file-browser <folder>`, also sent to an already running
+    // instance.
+    app.connect_open(|app, files, _| {
+        let main_window = main_window(app);
+        if let Some(path) = files.iter().find_map(|file| file.path()) {
+            main_window.open_location(&path);
         }
-        let ctx = AppContext::new();
-        let language = ctx.settings().language;
-        i18n_service::init(&language.code(i18n_service::system_language_code()));
-        file_icons::set_use_system_theme(ctx.settings().use_system_icon_theme);
-        let main_window = MainWindow::new(app, ctx);
         main_window.window.present();
-        // Every handler holds a weak ref: the window owns the only strong
-        // one, released when it is destroyed.
-        let owner = RefCell::new(Some(main_window.clone()));
-        main_window.window.connect_destroy(move |_| {
-            owner.take();
-        });
     });
     app
+}
+
+thread_local! {
+    static MAIN_WINDOW: RefCell<Weak<MainWindow>> = RefCell::default();
+}
+
+/// The window, created on first use.
+fn main_window(app: &adw::Application) -> Rc<MainWindow> {
+    if let Some(main_window) = MAIN_WINDOW.with_borrow(Weak::upgrade) {
+        return main_window;
+    }
+    let ctx = AppContext::new();
+    let language = ctx.settings().language;
+    i18n_service::init(&language.code(i18n_service::system_language_code()));
+    file_icons::set_use_system_theme(ctx.settings().use_system_icon_theme);
+    let main_window = MainWindow::new(app, ctx);
+    // Every handler holds a weak ref: the window owns the only strong
+    // one, released when it is destroyed.
+    let owner = RefCell::new(Some(main_window.clone()));
+    main_window.window.connect_destroy(move |_| {
+        owner.take();
+    });
+    MAIN_WINDOW.set(Rc::downgrade(&main_window));
+    main_window
 }
 
 fn run_job(
@@ -275,7 +294,7 @@ impl MainWindow {
             (settings.view_mode, settings.grid_icon_size)
         };
         let (on_mode, on_size) = (Rc::downgrade(self), Rc::downgrade(self));
-        let switcher = build_view_mode_switcher(
+        let (switcher, mode_group) = build_view_mode_switcher(
             mode,
             icon_size,
             move |mode| {
@@ -289,6 +308,7 @@ impl MainWindow {
                 }
             },
         );
+        self.add_view_mode_action(mode, mode_group);
         let new_tab_button = gtk::Button::from_icon_name("tab-new-symbolic");
         new_tab_button.set_tooltip_text(Some(&tr("New Tab")));
         new_tab_button.set_action_name(Some("win.new-tab"));
@@ -785,10 +805,50 @@ impl MainWindow {
             entry.add_css_class("error");
             return;
         }
+        self.open_location(&path);
+    }
+
+    /// Shows `path` in the active tab, with every folder down to it in the
+    /// columns view; a file shows its folder.
+    fn open_location(&self, path: &Path) {
+        let folder = if self.ctx.file_system.is_dir(path) {
+            path.to_path_buf()
+        } else {
+            parent_dir(path)
+        };
         let Some(tab) = self.active_tab() else { return };
-        tab.navigate(&path, true);
+        tab.navigate(&folder, true);
         self.update_tab_title(&tab);
-        self.update_path_state(&path);
+        self.path_entry.set_sensitive(true);
+        self.update_path_state(&folder);
+    }
+
+    /// `win.view-mode('grid')`, also bound to Ctrl+1/2/3. Goes through the
+    /// switcher's toggle group so that the button stays in sync.
+    fn add_view_mode_action(&self, mode: ViewMode, group: adw::ToggleGroup) {
+        let action = gio::SimpleAction::new_stateful(
+            "view-mode",
+            Some(glib::VariantTy::STRING),
+            &mode.id().to_variant(),
+        );
+        action.connect_activate(move |action, parameter| {
+            let Some(id) = parameter.and_then(|parameter| parameter.get::<String>()) else {
+                return;
+            };
+            if ViewMode::from_id(&id).is_some() {
+                group.set_active_name(Some(&id));
+                action.set_state(&id.to_variant());
+            }
+        });
+        self.window.add_action(&action);
+        if let Some(app) = self.window.application() {
+            for (index, mode) in ViewMode::ALL.into_iter().enumerate() {
+                app.set_accels_for_action(
+                    &format!("win.view-mode('{}')", mode.id()),
+                    &[&format!("<Control>{}", index + 1)],
+                );
+            }
+        }
     }
 
     fn on_view_mode_changed(&self, mode: ViewMode) {

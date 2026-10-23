@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use dupot_file_browser::domain::shared::path::{
-    ancestor_chain, file_name, parent_dir, split_extension, valid_file_name,
+    ancestor_chain, ancestor_chain_from, file_name, parent_dir, split_extension, valid_file_name,
 };
 
 #[test]
@@ -28,6 +28,28 @@ fn chain_from_root() {
         ]
     );
     assert_eq!(ancestor_chain(Path::new("/")), vec![PathBuf::from("/")]);
+}
+
+#[test]
+fn chain_from_home_when_inside() {
+    let home = Path::new("/home/me");
+    assert_eq!(
+        ancestor_chain_from(Path::new("/home/me/a"), home),
+        vec![PathBuf::from("/home/me"), PathBuf::from("/home/me/a")]
+    );
+    assert_eq!(
+        ancestor_chain_from(home, home),
+        vec![PathBuf::from("/home/me")]
+    );
+    assert_eq!(
+        ancestor_chain_from(Path::new("/etc"), home),
+        vec![PathBuf::from("/"), PathBuf::from("/etc")]
+    );
+    // A sibling sharing the prefix is not inside.
+    assert_eq!(
+        ancestor_chain_from(Path::new("/home/meo"), home),
+        ancestor_chain(Path::new("/home/meo"))
+    );
 }
 
 #[test]

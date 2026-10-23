@@ -10,7 +10,7 @@ use gtk::prelude::*;
 use gtk::{gdk, glib, pango};
 
 use crate::domain::entity::file_entry_entity::FileEntryEntity;
-use crate::domain::shared::path::{ancestor_chain, parent_dir};
+use crate::domain::shared::path::{ancestor_chain_from, parent_dir};
 use crate::infrastructure::service::i18n_service::tr;
 use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink};
 use crate::infrastructure::ui::shared::color_picker_popup::swatch_class;
@@ -267,11 +267,13 @@ impl PathPage {
         self.push_column(path);
     }
 
-    /// One column per folder from `/` down to `path`, each highlighting the
-    /// next, as if the user had clicked their way there.
+    /// One column per folder from the home folder (or `/` outside it) down
+    /// to `path`, each highlighting the next, as if the user had clicked
+    /// their way there. Going up still reveals the folders above.
     pub fn load_path_chain(&self, path: &Path) {
         self.reset_columns();
-        for segment in ancestor_chain(path) {
+        let home = self.ctx.file_system.home_dir();
+        for segment in ancestor_chain_from(path, &home) {
             if let Some(last) = self.columns.borrow().last() {
                 last.select_path(&segment);
             }

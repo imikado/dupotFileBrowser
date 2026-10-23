@@ -23,6 +23,16 @@ pub fn ancestor_chain(path: &Path) -> Vec<PathBuf> {
     chain
 }
 
+/// Like `ancestor_chain`, but starting at `root` when `path` is inside it
+/// (the home folder: its parents are rarely where the user is headed).
+pub fn ancestor_chain_from(path: &Path, root: &Path) -> Vec<PathBuf> {
+    let mut chain = ancestor_chain(path);
+    if let Some(start) = chain.iter().position(|folder| folder == root) {
+        chain.drain(..start);
+    }
+    chain
+}
+
 /// Trimmed `name` if usable as a single file name in a folder.
 pub fn valid_file_name(name: &str) -> Option<&str> {
     let name = name.trim();

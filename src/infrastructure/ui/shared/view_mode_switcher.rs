@@ -1,5 +1,6 @@
 //! Header-bar button picking the view mode (columns, grid, details) and the
-//! grid's icon size. Its icon shows the current mode.
+//! grid's icon size. Its icon shows the current mode. The toggle group is
+//! returned too, so that other controls (shortcuts) can switch the mode.
 
 use std::rc::Rc;
 
@@ -32,7 +33,7 @@ pub fn build_view_mode_switcher(
     icon_size: i32,
     on_mode_changed: impl Fn(ViewMode) + 'static,
     on_icon_size_changed: impl Fn(i32) + 'static,
-) -> gtk::MenuButton {
+) -> (gtk::MenuButton, adw::ToggleGroup) {
     let button = gtk::MenuButton::new();
     button.set_tooltip_text(Some(&tr("View")));
     button.set_icon_name(icon_name(mode));
@@ -94,5 +95,5 @@ pub fn build_view_mode_switcher(
     let popover = gtk::Popover::new();
     popover.set_child(Some(&content));
     button.set_popover(Some(&popover));
-    button
+    (button, group)
 }

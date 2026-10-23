@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="export/screenshots/homepage.png" width="720" alt="dupotFileBrowser">
+<img src="export/screenshots/demo.gif" width="720" alt="dupotFileBrowser demo: column navigation, grid and details views, tabs">
 
 # dupotFileBrowser
 
 **A simple, lightweight file browser for the Linux desktop.**
 Built with Rust, GTK4 and libadwaita — clean, fast, and out of your way.
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-LGPL--2.1-green)
 ![Rust](https://img.shields.io/badge/Rust-2024-b7410e)
 ![GTK4](https://img.shields.io/badge/GTK-4-4a86cf)
@@ -34,12 +34,16 @@ desktop.
   <kbd>Ctrl</kbd>+<kbd>W</kbd>)
 - **Editable path bar** — type a path and press <kbd>Enter</kbd> to jump there
 - **Sidebar** with Home, Trash, your favorites, and host `/etc` & `/usr`
-  shortcuts (handy inside the Flatpak sandbox)
+  shortcuts (handy inside the Flatpak sandbox); it folds away on narrow
+  windows
+- **Open a folder from the command line**: `dupot-file-browser ~/Projects`
+  (reuses the open window)
 - Optional **single-click** opening and **hidden-files** toggle
 
 ### File operations
 - Copy, cut / move, paste, rename, and **move to Trash**
 - **Trash page** — restore items or delete them permanently, empty the Trash
+- A notification confirms each finished copy, move, compression or extraction
 - **Compress** files and folders to `.zip`, `.tar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`
 - **Extract** archives, including `.rar`
 - **Open with…** any application, and set the default app for a file type
@@ -55,6 +59,17 @@ desktop.
 ### Look & feel
 - Light, dark, or system **theme**
 - Baked file-type icons, or your **system icon theme**
+- **Keyboard shortcuts**:
+
+  | Shortcut | Action |
+  |---|---|
+  | <kbd>Ctrl</kbd>+<kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Columns / grid / details view |
+  | <kbd>Ctrl</kbd>+<kbd>L</kbd> | Edit the path |
+  | <kbd>Alt</kbd>+<kbd>↑</kbd> | Parent folder |
+  | <kbd>Ctrl</kbd>+<kbd>T</kbd> / <kbd>Ctrl</kbd>+<kbd>W</kbd> | New tab / close tab |
+  | <kbd>F9</kbd> | Show or hide the sidebar |
+  | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Parameters |
+
 - Available in 🇬🇧 English, 🇫🇷 French and 🇮🇹 Italian
 - Window size, view mode and preferences are remembered
   (stored under `$XDG_DATA_HOME/org.dupot.filebrowser/`)
@@ -63,16 +78,19 @@ desktop.
 
 <table>
 <tr>
+<td><img src="export/screenshots/homepage.png" width="400" alt="Home folder"><br><sub>Home folder</sub></td>
 <td><img src="export/screenshots/columns_navigation.png" width="400" alt="Navigation by column"><br><sub>Navigation by column</sub></td>
-<td><img src="export/screenshots/path_editable.png" width="400" alt="Path is editable"><br><sub>Editable path bar</sub></td>
 </tr>
 <tr>
-<td><img src="export/screenshots/display_mode_icons.png" width="400" alt="Grid view"><br><sub>Grid view</sub></td>
+<td><img src="export/screenshots/display_mode_icons.png" width="400" alt="Grid view"><br><sub>Grid view with picture thumbnails</sub></td>
 <td><img src="export/screenshots/display_mode_details.png" width="400" alt="Details view"><br><sub>Details view</sub></td>
 </tr>
 <tr>
-<td><img src="export/screenshots/display_mode_list.png" width="400" alt="Columns view"><br><sub>Columns view</sub></td>
-<td><img src="export/screenshots/folder_menu.png" width="200" alt="Folder context menu"><br><sub>Folder context menu</sub></td>
+<td><img src="export/screenshots/display_mode_list.png" width="400" alt="Dark theme"><br><sub>Dark theme</sub></td>
+<td><img src="export/screenshots/path_editable.png" width="400" alt="Path is editable"><br><sub>Editable path bar</sub></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><img src="export/screenshots/folder_menu.png" width="200" alt="Folder context menu"><br><sub>Folder context menu</sub></td>
 </tr>
 <tr>
 <td><img src="export/screenshots/add_color.png" width="400" alt="Tag a folder with a color"><br><sub>Tag a folder with a color</sub></td>
@@ -184,6 +202,20 @@ colors, file types, job errors) aren't seen by `xgettext`; they're listed in
 Italian translation.
 
 New languages and translation fixes are very welcome!
+
+### Screenshots
+
+Inside `nix develop`, in an X11 session and with the app closed:
+
+```sh
+./generate_screenshots.sh                 # → export/screenshots/*.png + demo.gif
+OUT=/tmp/shots ./generate_screenshots.sh  # try it without overwriting
+```
+
+It builds the release binary, starts it on a throw-away demo home folder
+(no personal file shows up), drives it through its D-Bus actions and
+captures the window. `folder_menu.png`, `add_color.png` and
+`file_properties.png` need a right-click and are kept as they are.
 
 ### Releasing
 
