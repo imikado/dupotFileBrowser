@@ -283,10 +283,18 @@ impl PathPage {
     }
 
     /// Reloads open columns showing `path`, keeping columns and selection.
+    /// Columns of folders that no longer exist (renamed or trashed from
+    /// another tab) are dropped.
     pub fn refresh_path(&self, path: &Path) {
         let columns: Vec<Rc<Column>> = self.columns.borrow().clone();
         for column in columns.iter().filter(|column| column.path == path) {
             self.fill(column);
+        }
+        let gone = columns
+            .iter()
+            .position(|column| !self.ctx.file_system.is_dir(&column.path));
+        if let Some(index) = gone.filter(|index| *index > 0) {
+            self.drop_stale_columns(&columns[index - 1]);
         }
     }
 
@@ -298,7 +306,8 @@ impl PathPage {
         }
     }
 
-    /// Reveals the parent of the leftmost column; `None` at `/`.
+    /// Reveals the parent of the leftmost column; `None` at `/`. The
+    /// current folder stays the rightmost column's: no `PathChanged`.
     pub fn prepend_parent(&self) -> Option<PathBuf> {
         let leftmost = self.columns.borrow().first()?.path.clone();
         let parent = parent_dir(&leftmost);
@@ -310,9 +319,16 @@ impl PathPage {
         self.columns_box
             .insert_child_after(&column.root, None::<&gtk::Widget>);
         self.columns.borrow_mut().insert(0, column);
-        (self.events)(BrowserEvent::PathChanged(parent.clone()));
         self.scroll_to(false);
         Some(parent)
+    }
+
+    /// Whether `prepend_parent` has a folder to reveal.
+    pub fn can_prepend_parent(&self) -> bool {
+        self.columns
+            .borrow()
+            .first()
+            .is_some_and(|column| parent_dir(&column.path) != column.path)
     }
 
     fn scroll_to_end(&self) {

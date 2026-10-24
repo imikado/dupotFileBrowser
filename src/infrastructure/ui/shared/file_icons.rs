@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
 use adw::prelude::*;
-use gtk::{gdk, gdk_pixbuf, gio, glib};
+use gtk::{gdk, gdk_pixbuf, glib};
 
 use crate::domain::entity::file_entry_entity::FOLDER_ICON_KEY;
 
@@ -83,9 +83,10 @@ fn icon_bytes(key: &str, dark: bool) -> &'static [u8] {
     if dark { dark_bytes } else { light }
 }
 
-fn load_pixbuf(bytes: &'static [u8], size: i32) -> Option<gdk_pixbuf::Pixbuf> {
-    let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_static(bytes));
-    gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, size, size, true, gio::Cancellable::NONE).ok()
+/// Decoded by GTK itself (libpng) rather than gdk-pixbuf: in the Snap,
+/// gdk-pixbuf hands PNGs to glycin, whose sandboxed loaders can't run.
+fn load_texture(bytes: &'static [u8]) -> Option<gdk::Texture> {
+    gdk::Texture::from_bytes(&glib::Bytes::from_static(bytes)).ok()
 }
 
 fn baked_texture(key: &str, dark: bool, size: i32) -> Option<gdk::Texture> {
@@ -93,27 +94,23 @@ fn baked_texture(key: &str, dark: bool, size: i32) -> Option<gdk::Texture> {
     if let Some(texture) = TEXTURES.with_borrow(|cache| cache.get(&cache_key).cloned()) {
         return Some(texture);
     }
-    let texture = gdk::Texture::for_pixbuf(&load_pixbuf(icon_bytes(key, dark), size)?);
+    let texture = load_texture(icon_bytes(key, dark))?;
     TEXTURES.with_borrow_mut(|cache| cache.insert(cache_key, texture.clone()));
     Some(texture)
 }
 
 /// Fills the icon's silhouette (alpha kept) with `hex` (`#rrggbb`).
-fn tint(pixbuf: &gdk_pixbuf::Pixbuf, hex: &str) -> Option<gdk::Texture> {
+fn tint(texture: &gdk::Texture, hex: &str) -> Option<gdk::Texture> {
     let channel = |i: usize| u8::from_str_radix(hex.get(i..i + 2)?, 16).ok();
     let rgb = [channel(1)?, channel(3)?, channel(5)?];
-    let pixbuf = if pixbuf.has_alpha() {
-        pixbuf.clone()
-    } else {
-        pixbuf.add_alpha(false, 0, 0, 0).ok()?
-    };
-    let (width, height) = (pixbuf.width() as usize, pixbuf.height() as usize);
-    let stride = pixbuf.rowstride() as usize;
-    let channels = pixbuf.n_channels() as usize;
-    let mut data = pixbuf.read_pixel_bytes().to_vec();
+    let mut downloader = gdk::TextureDownloader::new(texture);
+    downloader.set_format(gdk::MemoryFormat::R8g8b8a8);
+    let (bytes, stride) = downloader.download_bytes();
+    let (width, height) = (texture.width() as usize, texture.height() as usize);
+    let mut data = bytes.to_vec();
     for y in 0..height {
         for x in 0..width {
-            let i = y * stride + x * channels;
+            let i = y * stride + x * 4;
             data[i..i + 3].copy_from_slice(&rgb);
         }
     }
@@ -167,9 +164,10 @@ fn tinted_folder(hex: &str, size: i32) -> Option<gdk::Texture> {
         .then(|| system_icon(FOLDER_ICON_KEY, size))
         .flatten()
         .and_then(|paintable| paintable.file()?.path())
-        .and_then(|path| gdk_pixbuf::Pixbuf::from_file_at_size(path, size, size).ok());
-    let pixbuf = from_theme.or_else(|| load_pixbuf(icon_bytes(FOLDER_ICON_KEY, false), size));
-    let texture = pixbuf.and_then(|pixbuf| tint(&pixbuf, hex));
+        .and_then(|path| gdk_pixbuf::Pixbuf::from_file_at_size(path, size, size).ok())
+        .map(|pixbuf| gdk::Texture::for_pixbuf(&pixbuf));
+    let source = from_theme.or_else(|| load_texture(icon_bytes(FOLDER_ICON_KEY, false)));
+    let texture = source.and_then(|source| tint(&source, hex));
     TINTED.with_borrow_mut(|cache| cache.insert(cache_key, texture.clone()));
     texture
 }
@@ -213,6 +211,11 @@ pub fn folder_image(color: Option<&str>, size: i32) -> gtk::Image {
 
 /// A real preview of an image file, decoded at `size`.
 pub fn thumbnail(path: &std::path::Path, size: i32) -> Option<gtk::Image> {
-    let pixbuf = gdk_pixbuf::Pixbuf::from_file_at_scale(path, size, size, true).ok()?;
-    Some(image_of(Some(&gdk::Texture::for_pixbuf(&pixbuf)), size))
+    // gdk-pixbuf scales while decoding; GTK's own loader (PNG/JPEG/TIFF)
+    // is the fallback where gdk-pixbuf can't decode (Snap, see load_texture).
+    let texture = gdk_pixbuf::Pixbuf::from_file_at_scale(path, size, size, true)
+        .map(|pixbuf| gdk::Texture::for_pixbuf(&pixbuf))
+        .or_else(|_| gdk::Texture::from_filename(path))
+        .ok()?;
+    Some(image_of(Some(&texture), size))
 }

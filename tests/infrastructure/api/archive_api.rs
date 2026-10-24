@@ -55,3 +55,36 @@ fn single_file_and_failures() {
     assert!(!dir.join("m.zip").exists(), "partial archive removed");
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn zip_skips_dangling_symlinks() {
+    let dir = temp_dir("archive-dangling");
+    let source = dir.join("project");
+    fs::create_dir_all(&source).unwrap();
+    fs::write(source.join("kept.txt"), "k").unwrap();
+    std::os::unix::fs::symlink(dir.join("missing"), source.join("broken")).unwrap();
+
+    let archive = dir.join("project.zip");
+    ArchiveApi
+        .compress(&source, &archive, ArchiveFormat::Zip)
+        .unwrap();
+    let out = dir.join("out");
+    ArchiveApi.extract(&archive, &out).unwrap();
+    assert_eq!(
+        fs::read_to_string(out.join("project/kept.txt")).unwrap(),
+        "k"
+    );
+    assert!(!out.join("project/broken").exists());
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn failed_extraction_leaves_no_folder() {
+    let dir = temp_dir("archive-corrupt");
+    let archive = dir.join("broken.zip");
+    fs::write(&archive, "not a zip").unwrap();
+    let out = dir.join("broken");
+    assert!(ArchiveApi.extract(&archive, &out).is_err());
+    assert!(!out.exists());
+    let _ = fs::remove_dir_all(dir);
+}

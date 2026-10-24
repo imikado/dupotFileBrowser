@@ -1,5 +1,7 @@
 //! freedesktop.org Trash specification: `.trashinfo` files and names.
 
+use std::path::{Path, PathBuf};
+
 use crate::domain::shared::path::split_extension;
 
 /// Content of the `.trashinfo` file for an item trashed from `original_path`
@@ -94,4 +96,95 @@ pub fn percent_decode(text: &str) -> String {
         }
     }
     String::from_utf8_lossy(&decoded).into_owned()
+}
+
+/// Trash folders of a mounted disk other than the home one, in the order
+/// the spec tries them: the administrator's `$topdir/.Trash/$uid`, then
+/// the user's own `$topdir/.Trash-$uid`.
+pub fn topdir_trash_dirs(topdir: &Path, uid: u32) -> [PathBuf; 2] {
+    [
+        topdir.join(".Trash").join(uid.to_string()),
+        topdir.join(format!(".Trash-{uid}")),
+    ]
+}
+
+/// `Path=` value for an item trashed from `original`: relative to `topdir`
+/// for a disk's own trash (it may be mounted elsewhere later), absolute in
+/// the home trash.
+pub fn trash_info_path(original: &Path, topdir: Option<&Path>) -> String {
+    topdir
+        .and_then(|topdir| original.strip_prefix(topdir).ok())
+        .unwrap_or(original)
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// Original location from a `Path=` value, relative ones being resolved
+/// against the disk's `topdir`.
+pub fn resolve_trash_info_path(value: &str, topdir: Option<&Path>) -> String {
+    match topdir {
+        Some(topdir) if !value.is_empty() && !value.starts_with('/') => {
+            topdir.join(value).to_string_lossy().into_owned()
+        }
+        _ => value.to_string(),
+    }
+}
+
+/// File systems with no user files: never searched for a trash folder
+/// (looking could also trigger automounts or hang on network mounts).
+const PSEUDO_FILE_SYSTEMS: &[&str] = &[
+    "autofs",
+    "binfmt_misc",
+    "bpf",
+    "cgroup",
+    "cgroup2",
+    "configfs",
+    "debugfs",
+    "devpts",
+    "devtmpfs",
+    "efivarfs",
+    "fusectl",
+    "fuse.gvfsd-fuse",
+    "fuse.portal",
+    "hugetlbfs",
+    "mqueue",
+    "nsfs",
+    "proc",
+    "pstore",
+    "ramfs",
+    "securityfs",
+    "squashfs",
+    "sysfs",
+    "tmpfs",
+    "tracefs",
+];
+
+/// Mount points of `/proc/self/mounts` that can hold user files.
+pub fn user_mount_points(mounts: &str) -> Vec<PathBuf> {
+    mounts
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            let (_device, mount_point, fs_type) = (fields.next()?, fields.next()?, fields.next()?);
+            let mount_point = unescape_mount_field(mount_point);
+            let system = ["/proc", "/sys", "/dev", "/run/user", "/snap"]
+                .iter()
+                .any(|prefix| Path::new(&mount_point).starts_with(prefix));
+            (!system && !PSEUDO_FILE_SYSTEMS.contains(&fs_type)).then(|| PathBuf::from(mount_point))
+        })
+        .collect()
+}
+
+/// `/proc/self/mounts` writes space, tab, newline and backslash as `\040`…
+fn unescape_mount_field(field: &str) -> String {
+    let mut text = field.to_string();
+    for (escaped, plain) in [
+        ("\\040", " "),
+        ("\\011", "\t"),
+        ("\\012", "\n"),
+        ("\\134", "\\"),
+    ] {
+        text = text.replace(escaped, plain);
+    }
+    text
 }

@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
@@ -13,10 +14,11 @@ use crate::domain::entity::app_info::APP;
 use crate::domain::entity::file_operation_entity::{FileOperationEntity, FileOperationKind};
 use crate::domain::entity::user_settings_entity::{Theme, ViewMode};
 use crate::domain::error::{DomainError, DomainResult};
+use crate::domain::shared::packaging::Packaging;
 use crate::domain::shared::path::{file_name, parent_dir};
 use crate::domain::usecase::destination::{Destination, extract_destination, paste_destination};
-use crate::infrastructure::service::gvfs_service;
 use crate::infrastructure::service::i18n_service::{self, tr, trf};
+use crate::infrastructure::service::{gvfs_service, packaging_service};
 use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent};
 use crate::infrastructure::ui::browser_tab::{BrowserTab, TabEventSink};
 use crate::infrastructure::ui::menu::parameters_dialog::{SettingsChanges, show_parameters_dialog};
@@ -128,6 +130,29 @@ pub fn build_application() -> adw::Application {
         .application_id(APP.id)
         .flags(gio::ApplicationFlags::HANDLES_OPEN)
         .build();
+    app.add_main_option(
+        "packaging",
+        glib::Char::from(0),
+        glib::OptionFlags::NONE,
+        glib::OptionArg::String,
+        "How the app was installed: flatpak, snap or native (default)",
+        Some("PACKAGING"),
+    );
+    app.connect_handle_local_options(|_, options| {
+        let Some(id) = options.lookup::<String>("packaging").ok().flatten() else {
+            return ControlFlow::Continue(());
+        };
+        match Packaging::from_id(&id) {
+            Some(packaging) => {
+                packaging_service::init(packaging);
+                ControlFlow::Continue(())
+            }
+            None => {
+                eprintln!("unknown --packaging value: {id} (flatpak, snap or native)");
+                ControlFlow::Break(glib::ExitCode::from(2))
+            }
+        }
+    });
     app.connect_startup(|_| {
         install_app_css();
         install_app_icon();
@@ -225,7 +250,8 @@ impl MainWindow {
 
         let home_path = ctx.file_system.home_dir();
         let trash_path = ctx.trash.trash_dir();
-        let host_paths = if ctx.desktop.is_sandboxed() {
+        // The host's own /etc and /usr, mounted under /run/host by Flatpak.
+        let host_paths = if ctx.desktop.packaging() == Packaging::Flatpak {
             [
                 (tr("Host /etc"), "/run/host/etc"),
                 (tr("Host /usr"), "/run/host/usr"),
@@ -746,8 +772,18 @@ impl MainWindow {
         *self.current_path.borrow_mut() = path.to_path_buf();
         self.path_entry.set_text(&path.to_string_lossy());
         self.path_entry.remove_css_class("error");
-        self.up_button.set_sensitive(path.parent().is_some());
+        self.update_up_button(path);
         self.side_menu.set_selected_path(path);
+    }
+
+    /// Columns can go up as long as the leftmost column isn't `/`, even
+    /// when the current (rightmost) folder stays the same.
+    fn update_up_button(&self, path: &Path) {
+        let can_go_up = match self.active_tab() {
+            Some(tab) => tab.can_go_up(),
+            None => path.parent().is_some(),
+        };
+        self.up_button.set_sensitive(can_go_up);
     }
 
     fn show_trash_state(&self) {
@@ -779,6 +815,8 @@ impl MainWindow {
         self.update_tab_title(&tab);
         self.path_entry.set_sensitive(true);
         self.update_path_state(&path);
+        // The tab may have just left the Trash, where Paste is hidden.
+        self.update_paste_button();
     }
 
     fn go_to_trash(self: &Rc<Self>) {
@@ -796,9 +834,10 @@ impl MainWindow {
             self.update_tab_title(&tab);
             self.update_path_state(&path);
         }
+        self.update_up_button(&tab.current_path());
     }
 
-    fn on_path_entry_activate(&self, entry: &gtk::Entry) {
+    fn on_path_entry_activate(self: &Rc<Self>, entry: &gtk::Entry) {
         let text = entry.text();
         let path = PathBuf::from(text.trim());
         if text.trim().is_empty() || !self.ctx.file_system.is_dir(&path) {
@@ -809,18 +848,22 @@ impl MainWindow {
     }
 
     /// Shows `path` in the active tab, with every folder down to it in the
-    /// columns view; a file shows its folder.
-    fn open_location(&self, path: &Path) {
+    /// columns view; a file shows its folder, a missing path nothing.
+    fn open_location(self: &Rc<Self>, path: &Path) {
         let folder = if self.ctx.file_system.is_dir(path) {
             path.to_path_buf()
         } else {
             parent_dir(path)
         };
+        if !self.ctx.file_system.exists(path) || !self.ctx.file_system.is_dir(&folder) {
+            return;
+        }
         let Some(tab) = self.active_tab() else { return };
         tab.navigate(&folder, true);
         self.update_tab_title(&tab);
         self.path_entry.set_sensitive(true);
         self.update_path_state(&folder);
+        self.update_paste_button();
     }
 
     /// `win.view-mode('grid')`, also bound to Ctrl+1/2/3. Goes through the
@@ -916,10 +959,14 @@ impl MainWindow {
         self.paste_slot.append(&button);
     }
 
+    /// A copied file can be pasted again; a cut one has left its place.
     fn on_paste_clicked(self: &Rc<Self>) {
-        let Some((source, cut)) = self.clipboard.take() else {
+        let Some((source, cut)) = self.clipboard.borrow().clone() else {
             return;
         };
+        if cut {
+            self.clipboard.take();
+        }
         self.update_paste_button();
         self.request_paste(&source, cut, None);
     }
@@ -1053,6 +1100,8 @@ impl MainWindow {
         let weak = Rc::downgrade(self);
         show_parameters_dialog(&self.window, &self.ctx, move |changes: SettingsChanges| {
             let Some(this) = weak.upgrade() else { return };
+            // Saving may restart the app: nothing pending must be lost.
+            this.flush_pending_saves();
             this.apply_theme();
             for tab in this.all_tabs() {
                 if changes.hidden_files {
@@ -1074,7 +1123,7 @@ impl MainWindow {
         about.set_license_type(gtk::License::Lgpl21);
         about.set_website(APP.website);
         about.set_issue_url(APP.issue_url);
-        about.set_debug_info(&APP.build.details());
+        about.set_debug_info(&APP.build.details(self.ctx.desktop.packaging()));
         about.present(Some(&self.window));
     }
 }

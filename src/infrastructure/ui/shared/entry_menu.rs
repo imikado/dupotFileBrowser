@@ -200,6 +200,14 @@ pub fn show_entry_menu(
     items.push(item(tr("Rename"), |t| {
         let target = t.clone();
         let on_renamed: Rc<dyn Fn(PathBuf)> = Rc::new(move |destination| {
+            let moved_favorites = target
+                .ctx
+                .settings_mut()
+                .rename_favorites(&target.entry.path, &destination);
+            if moved_favorites {
+                target.ctx.save_settings();
+                (target.events)(BrowserEvent::FavoritesChanged);
+            }
             (target.hooks.renamed)(&target.entry, destination);
             (target.events)(BrowserEvent::FolderChanged(parent_dir(&target.entry.path)));
         });

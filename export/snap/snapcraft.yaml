@@ -1,0 +1,111 @@
+# Snap package of dupotFileBrowser — built by ../../build_snap.sh, which
+# copies this file to the project root as .snapcraft.yaml for the build
+# (snapcraft only looks there, in snap/ or build-aux/snap/): paths below are
+# relative to the project root.
+#
+# Self-contained on purpose (no `gnome` extension): the app needs
+# libadwaita >= 1.7 (Adw.ToggleGroup), and the only GNOME content snap
+# available (gnome-46-2404) ships 1.5. core26 (Ubuntu 26.04) has a recent
+# enough GTK4/libadwaita, so they're staged straight from its archive.
+#
+# No `gpu` extension: its build step clones a GitHub repository, and a file
+# browser draws fine in software (GSK_RENDERER=cairo in the launcher).
+#
+# Store listing (summary, description, screenshots, icon) comes from the
+# AppStream file, export/flatpak/org.dupot.filebrowser.appdata.xml.
+name: dupot-file-browser
+title: File Browser
+base: core26
+adopt-info: dupot-file-browser
+grade: stable
+confinement: strict
+license: LGPL-2.1-only
+icon: export/flatpak/512x512.png
+website: https://github.com/imikado/dupotFileBrowser
+issues: https://github.com/imikado/dupotFileBrowser/issues
+source-code: https://github.com/imikado/dupotFileBrowser
+
+platforms:
+  amd64:
+
+apps:
+  dupot-file-browser:
+    command: bin/launcher.sh
+    common-id: org.dupot.filebrowser
+    desktop: usr/share/applications/org.dupot.filebrowser.desktop
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - home
+      - removable-media
+      - mount-observe
+      - trash
+      - color-tags
+
+plugs:
+  # The XDG Trash lives in a hidden folder, which the `home` interface
+  # doesn't grant. Connect manually after a local install:
+  #   sudo snap connect dupot-file-browser:trash
+  trash:
+    interface: personal-files
+    write:
+      - $HOME/.local/share/Trash
+  # Color tags of the home folder's own items live in ~/.dupotFileBrowser,
+  # a hidden file `home` doesn't grant either:
+  #   sudo snap connect dupot-file-browser:color-tags
+  color-tags:
+    interface: personal-files
+    write:
+      - $HOME/.dupotFileBrowser
+
+parts:
+  dupot-file-browser:
+    plugin: rust
+    source: .
+    rust-channel: stable
+    build-packages:
+      - pkg-config
+      - libgtk-4-dev
+      - libadwaita-1-dev
+      - libglib2.0-bin
+      - libgdk-pixbuf-2.0-0
+      - librsvg2-common
+    stage-packages:
+      - libgtk-4-1
+      - libadwaita-1-0
+      - librsvg2-common
+      - gsettings-desktop-schemas
+      - adwaita-icon-theme
+      - hicolor-icon-theme
+      - shared-mime-info
+      - fontconfig-config
+      - fonts-cantarell
+    override-pull: |
+      craftctl default
+      craftctl set version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+    override-build: |
+      set -eu
+      craftctl default
+      # The launcher passes --packaging=snap (see build_snap.sh).
+      install -D -m 755 export/snap/launcher.sh "$CRAFT_PART_INSTALL/bin/launcher.sh"
+      install -D export/flatpak/org.dupot.filebrowser.desktop \
+        "$CRAFT_PART_INSTALL/usr/share/applications/org.dupot.filebrowser.desktop"
+      install -D export/flatpak/org.dupot.filebrowser.appdata.xml \
+        "$CRAFT_PART_INSTALL/usr/share/metainfo/org.dupot.filebrowser.appdata.xml"
+      for size in 16 24 32 48 64 128 256 512; do
+        install -D "export/flatpak/${size}x${size}.png" \
+          "$CRAFT_PART_INSTALL/usr/share/icons/hicolor/${size}x${size}/apps/org.dupot.filebrowser.png"
+      done
+    parse-info: [usr/share/metainfo/org.dupot.filebrowser.appdata.xml]
+    override-prime: |
+      set -eu
+      craftctl default
+      glib-compile-schemas usr/share/glib-2.0/schemas
+      # Pixbuf loader cache with paths as seen at runtime (/snap/<name>/current).
+      loaders_dir="usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gdk-pixbuf-2.0/2.10.0"
+      GDK_PIXBUF_MODULEDIR="$PWD/$loaders_dir/loaders" \
+        "/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders" \
+        | sed "s|$PWD|/snap/$CRAFT_PROJECT_NAME/current|g" > "$loaders_dir/loaders.cache"
+      update-mime-database usr/share/mime || true

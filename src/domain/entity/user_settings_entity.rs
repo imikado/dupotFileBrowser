@@ -1,6 +1,8 @@
 //! Persisted user preferences, stored as JSON. Field names and values match
 //! the files written by the previous (Python) versions of the app.
 
+use std::path::{Path, PathBuf};
+
 use serde::{Deserialize, Serialize};
 
 use crate::domain::error::DomainResult;
@@ -197,6 +199,33 @@ impl UserSettingsEntity {
 
     pub fn remove_favorite(&mut self, path: &str) {
         self.favorite_list.retain(|favorite| favorite.path != path);
+    }
+
+    /// Follows a folder renamed or moved from `old` to `new`: favorites of
+    /// it or inside it get the new path, and a favorite still labelled with
+    /// the old name gets the new one. `true` if any changed.
+    pub fn rename_favorites(&mut self, old: &Path, new: &Path) -> bool {
+        let old_name = old.file_name().map(|name| name.to_string_lossy());
+        let mut changed = false;
+        for favorite in &mut self.favorite_list {
+            let path = PathBuf::from(&favorite.path);
+            let Ok(rest) = path.strip_prefix(old) else {
+                continue;
+            };
+            let moved = if rest.as_os_str().is_empty() {
+                if old_name.as_deref() == Some(favorite.label.as_str())
+                    && let Some(new_name) = new.file_name()
+                {
+                    favorite.label = new_name.to_string_lossy().into_owned();
+                }
+                new.to_path_buf()
+            } else {
+                new.join(rest)
+            };
+            favorite.path = moved.to_string_lossy().into_owned();
+            changed = true;
+        }
+        changed
     }
 
     pub fn is_favorite(&self, path: &str) -> bool {

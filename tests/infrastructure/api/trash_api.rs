@@ -42,3 +42,13 @@ fn trash_list_restore_delete() {
     assert!(trash.list().is_empty());
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn failed_trash_leaves_no_trashinfo() {
+    let dir = temp_dir("trash-missing");
+    let trash = TrashApi::new(dir.join("Trash"));
+    assert!(trash.trash(&dir.join("does-not-exist.txt")).is_err());
+    let info = fs::read_dir(dir.join("Trash/info")).unwrap().count();
+    assert_eq!(info, 0);
+    let _ = fs::remove_dir_all(dir);
+}

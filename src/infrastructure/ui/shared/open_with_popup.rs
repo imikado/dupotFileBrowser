@@ -82,10 +82,10 @@ pub fn show_app_chooser_dialog(parent: &gtk::Widget, path: &Path, content_type: 
 }
 
 /// Dropdown of the applications registered for the file's type, default
-/// preselected. In Flatpak GIO can't list host applications: the portal's
+/// preselected. In Flatpak or Snap GIO can't list host applications: the portal's
 /// own chooser is used instead.
 pub fn show_open_with_popup(parent: &gtk::Widget, ctx: &Rc<AppContext>, path: &Path) {
-    if ctx.desktop.is_sandboxed() {
+    if ctx.desktop.packaging().is_sandboxed() {
         let _ = ctx.desktop.open_with_chooser(path);
         return;
     }

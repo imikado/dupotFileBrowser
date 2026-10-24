@@ -26,7 +26,6 @@ build-options:
   env:
     CARGO_HOME: /run/build/dupot-file-browser/cargo
     # Shown in the About dialog; filled in by build_flatpak.sh.
-    DUPOT_BUILD_PACKAGE: flatpak
     DUPOT_BUILD_DATE: "@BUILD_DATE@"
 
 modules:
@@ -40,7 +39,14 @@ modules:
         - --share=network
     build-commands:
       - cargo build --release --locked
-      - install -Dm755 target/release/dupot-file-browser -t /app/bin/
+      # The binary goes to libexec; `command` is a launcher passing it
+      # --packaging (filled in by build_flatpak.sh).
+      - install -Dm755 target/release/dupot-file-browser -t /app/libexec/
+      - |
+        install -Dm755 /dev/stdin /app/bin/dupot-file-browser <<'EOF'
+        #!/bin/sh
+        exec /app/libexec/dupot-file-browser --packaging=@PACKAGING@ "$@"
+        EOF
       - install -Dm644 export/flatpak/org.dupot.filebrowser.desktop -t /app/share/applications/
       - install -Dm644 export/flatpak/org.dupot.filebrowser.appdata.xml -t /app/share/metainfo/
       - |

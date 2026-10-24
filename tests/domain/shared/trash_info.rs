@@ -1,6 +1,9 @@
+use std::path::{Path, PathBuf};
+
 use dupot_file_browser::domain::shared::trash_info::{
     build_trash_info, format_deletion_date, parse_trash_info, percent_decode, percent_encode,
-    unique_trashed_name,
+    resolve_trash_info_path, topdir_trash_dirs, trash_info_path, unique_trashed_name,
+    user_mount_points,
 };
 
 #[test]
@@ -40,4 +43,47 @@ fn deletion_date_display() {
     );
     assert_eq!(format_deletion_date("yesterday"), "yesterday");
     assert_eq!(format_deletion_date(""), "");
+}
+
+#[test]
+fn disk_trash_folders_in_spec_order() {
+    assert_eq!(
+        topdir_trash_dirs(Path::new("/media/usb"), 1000),
+        [
+            PathBuf::from("/media/usb/.Trash/1000"),
+            PathBuf::from("/media/usb/.Trash-1000")
+        ]
+    );
+}
+
+#[test]
+fn disk_trash_paths_are_relative_to_the_disk() {
+    let usb = Path::new("/media/usb");
+    assert_eq!(
+        trash_info_path(Path::new("/media/usb/photos/a.png"), Some(usb)),
+        "photos/a.png"
+    );
+    assert_eq!(trash_info_path(Path::new("/home/me/a"), None), "/home/me/a");
+    assert_eq!(
+        resolve_trash_info_path("photos/a.png", Some(usb)),
+        "/media/usb/photos/a.png"
+    );
+    assert_eq!(resolve_trash_info_path("/abs/a", Some(usb)), "/abs/a");
+    assert_eq!(resolve_trash_info_path("", Some(usb)), "");
+}
+
+#[test]
+fn mount_points_skip_pseudo_file_systems() {
+    let mounts = "\
+/dev/sda2 / ext4 rw 0 0
+proc /proc proc rw 0 0
+tmpfs /run tmpfs rw 0 0
+/dev/sdb1 /media/me/My\\040Disk vfat rw 0 0
+/dev/loop3 /snap/core26/1 squashfs ro 0 0
+gvfsd-fuse /run/user/1000/gvfs fuse.gvfsd-fuse rw 0 0
+";
+    assert_eq!(
+        user_mount_points(mounts),
+        [PathBuf::from("/"), PathBuf::from("/media/me/My Disk")]
+    );
 }

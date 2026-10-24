@@ -21,9 +21,16 @@
   <summary xml:lang="it">Un semplice ed essenziale esplora file</summary>
 
   <description>
-    <p>Browse your home folder and navigate by column with a simple, uncluttered GTK4/libadwaita interface.</p>
-    <p>Click a folder to open it, click a file to open it with its default application.</p>
-    <p>Available in English and French.</p>
+    <p>A simple, lightweight file browser with an uncluttered GTK4/libadwaita interface, focused on what you do every day: finding, opening and organizing your files.</p>
+    <ul>
+      <li>Three view modes: Miller columns, a grid with picture thumbnails, and a details list</li>
+      <li>Tabs, an editable path bar and a sidebar with your favorites</li>
+      <li>Copy, move, rename, Trash with restore, compress and extract archives</li>
+      <li>Color tags for folders, compatible with Nemo</li>
+      <li>Properties with editable permissions, Open With, set as wallpaper</li>
+      <li>Light and dark themes, keyboard shortcuts</li>
+    </ul>
+    <p>Available in English, French and Italian.</p>
   </description>
 
   <screenshots>
@@ -49,6 +56,7 @@
 
   <url type="homepage">https://www.dupot.org</url>
   <url type="vcs-browser">https://github.com/imikado/dupotFileBrowser/</url>
+  <url type="bugtracker">https://github.com/imikado/dupotFileBrowser/issues</url>
   <update_contact>imikado@gmail.com</update_contact>
   <content_rating type="oars-1.1"/>
 

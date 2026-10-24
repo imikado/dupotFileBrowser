@@ -115,6 +115,36 @@ impl AppContext {
         colors
     }
 
+    /// Color tag of `path`, read before a rename (folder metadata is keyed
+    /// by path).
+    pub fn color_at(&self, path: &Path) -> Option<String> {
+        if self.file_system.is_dir(path) {
+            self.color_tags.folder_color(path)
+        } else {
+            let parent = crate::domain::shared::path::parent_dir(path);
+            let name = crate::domain::shared::path::file_name(path);
+            self.color_tags.colored_path_map(&parent).remove(&name)
+        }
+    }
+
+    /// Puts `color` (from `color_at` before the move) on `new` and clears
+    /// what was recorded for `old`.
+    pub fn transfer_color(&self, old: &Path, new: &Path, color: Option<&str>) {
+        let Some(color) = color else { return };
+        use crate::domain::shared::path::{file_name, parent_dir};
+        if self.file_system.is_dir(new) {
+            // Clears the stale sidecar entry; the metadata left on the old
+            // path has no file to point at.
+            self.color_tags.set_folder_color(old, None);
+            self.color_tags.set_folder_color(new, Some(color));
+        } else {
+            self.color_tags
+                .set_file_color(&parent_dir(old), &file_name(old), None);
+            self.color_tags
+                .set_file_color(&parent_dir(new), &file_name(new), Some(color));
+        }
+    }
+
     /// Tags (or untags) an entry: folders the Nemo way, files in the sidecar.
     pub fn set_color(&self, entry: &FileEntryEntity, color: Option<&str>) {
         if entry.is_dir {

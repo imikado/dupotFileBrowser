@@ -1,11 +1,12 @@
 use std::path::Path;
 
 use crate::domain::error::DomainResult;
+use crate::domain::shared::packaging::Packaging;
 
 /// Integration with the desktop and host programs.
 pub trait DesktopRepository: Send + Sync {
-    /// Running inside the Flatpak sandbox.
-    fn is_sandboxed(&self) -> bool;
+    /// How the app was installed (`--packaging` at launch).
+    fn packaging(&self) -> Packaging;
     /// Opens with the default application.
     fn open_path(&self, path: &Path) -> DomainResult<()>;
     /// Asks the desktop portal to show its own "Open With" chooser.

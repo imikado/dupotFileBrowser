@@ -9,11 +9,13 @@ use gtk::glib;
 
 use crate::domain::contract::desktop_repository::DesktopRepository;
 use crate::domain::error::{DomainError, DomainResult};
+use crate::domain::shared::packaging::Packaging;
 use crate::domain::shared::path::parent_dir;
 use crate::domain::shared::shell::{TERMINAL_CANDIDATES, terminal_argv};
 use crate::infrastructure::service::host_command_service::{
     self, command_exists, run, run_capture,
 };
+use crate::infrastructure::service::packaging_service;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DesktopApi;
@@ -71,8 +73,8 @@ fn set_xfce_wallpaper(path: &str) -> bool {
 }
 
 impl DesktopRepository for DesktopApi {
-    fn is_sandboxed(&self) -> bool {
-        host_command_service::is_sandboxed()
+    fn packaging(&self) -> Packaging {
+        packaging_service::current()
     }
 
     fn open_path(&self, path: &Path) -> DomainResult<()> {

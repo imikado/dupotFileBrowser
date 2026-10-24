@@ -228,7 +228,7 @@ fn add_open_with_page(
     let group = adw::PreferencesGroup::new();
     page.add(&group);
 
-    if ctx.desktop.is_sandboxed() {
+    if ctx.desktop.packaging().is_sandboxed() {
         let row = adw::ActionRow::new();
         row.set_title(&tr("Open with"));
         row.set_subtitle(&tr("Choose an application to open this file"));

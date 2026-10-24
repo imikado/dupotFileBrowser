@@ -1,8 +1,10 @@
 //! Identity and version of the application, shown in the About dialog so a
 //! user can tell exactly which build they run.
 //!
-//! The version number comes from `Cargo.toml`; build date and package type
-//! are captured at compile time by `build.rs`.
+//! The version number comes from `Cargo.toml`; the build date is captured
+//! at compile time by `build.rs`. The packaging is only known at launch.
+
+use crate::domain::shared::packaging::Packaging;
 
 /// Where and how this binary was built.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,8 +12,6 @@ pub struct BuildInfo {
     pub version: &'static str,
     /// Build date, `YYYY-MM-DD`.
     pub date: Option<&'static str>,
-    /// `flatpak`, `nix` or `source`.
-    pub package: &'static str,
     pub os: &'static str,
     pub arch: &'static str,
 }
@@ -26,12 +26,12 @@ impl BuildInfo {
     }
 
     /// Multi-line details for bug reports.
-    pub fn details(&self) -> String {
+    pub fn details(&self, packaging: Packaging) -> String {
         let platform = format!("{}-{}", self.os, self.arch);
         [
             ("Version", self.version),
             ("Build date", self.date.unwrap_or("unknown")),
-            ("Package", self.package),
+            ("Package", packaging.id()),
             ("Platform", platform.as_str()),
         ]
         .iter()
@@ -61,7 +61,6 @@ pub const APP: AppInfo = AppInfo {
     build: BuildInfo {
         version: env!("CARGO_PKG_VERSION"),
         date: option_env!("DUPOT_BUILD_DATE"),
-        package: env!("DUPOT_BUILD_PACKAGE"),
         os: std::env::consts::OS,
         arch: std::env::consts::ARCH,
     },

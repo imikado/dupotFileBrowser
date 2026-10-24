@@ -6,17 +6,15 @@ use std::io::Read;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+use crate::domain::shared::packaging::Packaging;
 use crate::domain::shared::shell::quote;
+use crate::infrastructure::service::packaging_service;
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub fn is_sandboxed() -> bool {
-    std::env::var_os("FLATPAK_ID").is_some_and(|id| !id.is_empty())
-}
-
 fn host_command(argv: &[String]) -> Command {
     let mut full: Vec<String> = Vec::new();
-    if is_sandboxed() {
+    if packaging_service::current() == Packaging::Flatpak {
         full.extend(["flatpak-spawn".into(), "--host".into()]);
     }
     full.extend(argv.iter().cloned());

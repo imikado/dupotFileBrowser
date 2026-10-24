@@ -29,8 +29,12 @@ pub fn show_rename_dialog(
         None,
         move |new_name| match rename_destination(ctx.file_system.as_ref(), &path, &new_name) {
             Destination::Free(destination) => {
+                let color = ctx.color_at(&path);
                 match ctx.file_system.move_path(&path, &destination) {
-                    Ok(()) => on_renamed(destination),
+                    Ok(()) => {
+                        ctx.transfer_color(&path, &destination, color.as_deref());
+                        on_renamed(destination)
+                    }
                     Err(error) => {
                         let body = format!(
                             "{}\n\n{error}",

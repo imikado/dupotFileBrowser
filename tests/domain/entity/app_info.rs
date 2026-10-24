@@ -1,9 +1,9 @@
 use dupot_file_browser::domain::entity::app_info::{APP, BuildInfo};
+use dupot_file_browser::domain::shared::packaging::Packaging;
 
 const BUILD: BuildInfo = BuildInfo {
     version: "1.2.3",
     date: Some("2026-10-21"),
-    package: "appimage",
     os: "linux",
     arch: "x86_64",
 };
@@ -25,14 +25,18 @@ fn version_label_without_metadata() {
 #[test]
 fn details_for_bug_reports() {
     assert_eq!(
-        BUILD.details(),
-        "Version: 1.2.3\nBuild date: 2026-10-21\nPackage: appimage\nPlatform: linux-x86_64"
+        BUILD.details(Packaging::Snap),
+        "Version: 1.2.3\nBuild date: 2026-10-21\nPackage: snap\nPlatform: linux-x86_64"
     );
     let unknown = BuildInfo {
         date: None,
         ..BUILD
     };
-    assert!(unknown.details().contains("Build date: unknown"));
+    assert!(
+        unknown
+            .details(Packaging::Native)
+            .contains("Build date: unknown")
+    );
 }
 
 #[test]

@@ -42,8 +42,8 @@ impl BrowserTab {
             });
             let path_page = PathPage::new(ctx, events.clone());
             let grid_page = GridPage::new(ctx, events.clone());
-            let details_page = DetailsPage::new(ctx, events);
-            let trash_page = TrashPage::new(ctx);
+            let details_page = DetailsPage::new(ctx, events.clone());
+            let trash_page = TrashPage::new(ctx, events);
 
             let stack = gtk::Stack::new();
             stack.set_hexpand(true);
@@ -108,7 +108,7 @@ impl BrowserTab {
     }
 
     /// New folder when it moved up in place (single-folder views). Columns
-    /// prepends the parent column and reports it through its own event.
+    /// only prepends the parent column: the current folder doesn't change.
     pub fn go_up(&self) -> Option<PathBuf> {
         if !self.view_mode().is_single_folder() {
             self.path_page.prepend_parent();
@@ -121,6 +121,18 @@ impl BrowserTab {
         }
         self.navigate(&parent, false);
         Some(parent)
+    }
+
+    pub fn can_go_up(&self) -> bool {
+        if self.showing_trash() {
+            return false;
+        }
+        if self.view_mode().is_single_folder() {
+            let current = self.current_path();
+            parent_dir(&current) != current
+        } else {
+            self.path_page.can_prepend_parent()
+        }
     }
 
     pub fn apply_view_mode(&self) {

@@ -83,3 +83,33 @@ fn view_mode_ids() {
     assert!(ViewMode::Grid.is_single_folder());
     assert!(!ViewMode::Columns.is_single_folder());
 }
+
+#[test]
+fn renamed_folders_keep_their_favorites() {
+    let mut settings = UserSettingsEntity::default();
+    settings.add_favorite("Music", "/home/me/Music");
+    settings.add_favorite("Rock", "/home/me/Music/Rock");
+    settings.add_favorite("Musician", "/home/me/Musician");
+    let changed = settings.rename_favorites(
+        std::path::Path::new("/home/me/Music"),
+        std::path::Path::new("/home/me/Songs"),
+    );
+    assert!(changed);
+    let favorites: Vec<(&str, &str)> = settings
+        .favorite_list
+        .iter()
+        .map(|f| (f.label.as_str(), f.path.as_str()))
+        .collect();
+    assert_eq!(
+        favorites,
+        [
+            ("Songs", "/home/me/Songs"),
+            ("Rock", "/home/me/Songs/Rock"),
+            ("Musician", "/home/me/Musician"),
+        ]
+    );
+    assert!(!settings.rename_favorites(
+        std::path::Path::new("/elsewhere"),
+        std::path::Path::new("/x")
+    ));
+}

@@ -1,15 +1,17 @@
 //! Everything in the Trash, with its original location and deletion date,
 //! and Restore / Delete Permanently / Empty Trash.
 
+use std::path::Path;
 use std::rc::{Rc, Weak};
 
 use adw::prelude::*;
 use gtk::glib;
 
 use crate::domain::entity::trash_entry_entity::TrashEntryEntity;
+use crate::domain::shared::path::parent_dir;
 use crate::domain::shared::trash_info::format_deletion_date;
 use crate::infrastructure::service::i18n_service::{tr, trf};
-use crate::infrastructure::ui::app_context::AppContext;
+use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink};
 use crate::infrastructure::ui::shared::alert_dialog::{show_confirm, show_error};
 use crate::infrastructure::ui::shared::empty_state::{EMPTY_TRASH_ICON, empty_state};
 use crate::infrastructure::ui::shared::file_icons::small_icon;
@@ -22,11 +24,12 @@ pub struct TrashPage {
     list_box: gtk::ListBox,
     stack: gtk::Stack,
     empty_button: gtk::Button,
+    events: EventSink,
     weak_self: Weak<TrashPage>,
 }
 
 impl TrashPage {
-    pub fn new(ctx: &Rc<AppContext>) -> Rc<Self> {
+    pub fn new(ctx: &Rc<AppContext>, events: EventSink) -> Rc<Self> {
         let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -68,6 +71,7 @@ impl TrashPage {
 
         let page = Rc::new_cyclic(|weak_self| Self {
             ctx: ctx.clone(),
+            events,
             root,
             list_box,
             stack,
@@ -160,8 +164,18 @@ impl TrashPage {
         };
         match error {
             Some(body) => show_error(&self.root, &tr("Could not restore"), &body),
-            None => self.refresh(),
+            None => {
+                self.refresh();
+                let original = Path::new(&entry.original_path);
+                (self.events)(BrowserEvent::FolderChanged(parent_dir(original)));
+                self.notify_trash_changed();
+            }
         }
+    }
+
+    /// Other tabs showing the Trash reload.
+    fn notify_trash_changed(&self) {
+        (self.events)(BrowserEvent::FolderChanged(self.ctx.trash.trash_dir()));
     }
 
     fn confirm_delete(&self, entry: &TrashEntryEntity) {
@@ -189,6 +203,7 @@ impl TrashPage {
                     return;
                 }
                 page.refresh();
+                page.notify_trash_changed();
             },
         );
     }
@@ -211,6 +226,7 @@ impl TrashPage {
                     );
                 }
                 page.refresh();
+                page.notify_trash_changed();
             },
         );
     }

@@ -14,7 +14,9 @@ use crate::domain::contract::file_system_repository::FileSystemRepository;
 use crate::domain::entity::file_entry_entity::FileEntryEntity;
 use crate::domain::entity::file_properties_entity::FilePropertiesEntity;
 use crate::domain::error::{DomainError, DomainResult};
+use crate::domain::shared::packaging::Packaging;
 use crate::domain::shared::path::{file_name, parent_dir};
+use crate::infrastructure::service::packaging_service;
 
 const EXDEV: i32 = 18;
 
@@ -179,8 +181,15 @@ impl FileSystemRepository for FileSystemApi {
         path.is_dir()
     }
 
+    /// In a snap, `$HOME` is the snap's private folder
+    /// (`~/snap/<name>/<revision>`): the user's own is `$SNAP_REAL_HOME`.
     fn home_dir(&self) -> PathBuf {
-        std::env::var_os("HOME")
+        let variable = if packaging_service::current() == Packaging::Snap {
+            "SNAP_REAL_HOME"
+        } else {
+            "HOME"
+        };
+        std::env::var_os(variable)
             .filter(|home| !home.is_empty())
             .map_or_else(gtk::glib::home_dir, PathBuf::from)
     }

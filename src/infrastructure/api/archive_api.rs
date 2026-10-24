@@ -46,7 +46,13 @@ fn add_to_zip<W: Write + Seek>(
     path: &Path,
     name: &str,
 ) -> DomainResult<()> {
-    let metadata = fs::metadata(path)?;
+    let Ok(metadata) = fs::metadata(path) else {
+        // A dangling symlink has nothing to store; anything else is an error.
+        return match fs::symlink_metadata(path) {
+            Ok(_) => Ok(()),
+            Err(error) => Err(error.into()),
+        };
+    };
     let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(metadata.permissions().mode() & 0o7777);
@@ -139,24 +145,34 @@ impl ArchiveRepository for ArchiveApi {
         let kind = archive_kind(&file_name(source)).ok_or_else(|| {
             DomainError::new(format!("Unknown archive format: {}", source.display()))
         })?;
+        let created = !destination_dir.exists();
         fs::create_dir_all(destination_dir)?;
-        let open = || File::open(source).map(io::BufReader::new);
-        match kind {
-            ArchiveKind::Rar => extract_rar(source, destination_dir),
-            ArchiveKind::Format(ArchiveFormat::Zip) => {
-                zip::ZipArchive::new(File::open(source)?)?.extract(destination_dir)?;
-                Ok(())
-            }
-            ArchiveKind::Format(ArchiveFormat::Tar) => unpack_tar(open()?, destination_dir),
-            ArchiveKind::Format(ArchiveFormat::TarGz) => {
-                unpack_tar(flate2::read::GzDecoder::new(open()?), destination_dir)
-            }
-            ArchiveKind::Format(ArchiveFormat::TarBz2) => {
-                unpack_tar(bzip2::read::BzDecoder::new(open()?), destination_dir)
-            }
-            ArchiveKind::Format(ArchiveFormat::TarXz) => {
-                unpack_tar(xz2::read::XzDecoder::new(open()?), destination_dir)
-            }
+        let result = unpack(kind, source, destination_dir);
+        // A failed extraction must not leave a half-filled folder behind.
+        if result.is_err() && created {
+            let _ = fs::remove_dir_all(destination_dir);
+        }
+        result
+    }
+}
+
+fn unpack(kind: ArchiveKind, source: &Path, destination_dir: &Path) -> DomainResult<()> {
+    let open = || File::open(source).map(io::BufReader::new);
+    match kind {
+        ArchiveKind::Rar => extract_rar(source, destination_dir),
+        ArchiveKind::Format(ArchiveFormat::Zip) => {
+            zip::ZipArchive::new(File::open(source)?)?.extract(destination_dir)?;
+            Ok(())
+        }
+        ArchiveKind::Format(ArchiveFormat::Tar) => unpack_tar(open()?, destination_dir),
+        ArchiveKind::Format(ArchiveFormat::TarGz) => {
+            unpack_tar(flate2::read::GzDecoder::new(open()?), destination_dir)
+        }
+        ArchiveKind::Format(ArchiveFormat::TarBz2) => {
+            unpack_tar(bzip2::read::BzDecoder::new(open()?), destination_dir)
+        }
+        ArchiveKind::Format(ArchiveFormat::TarXz) => {
+            unpack_tar(xz2::read::XzDecoder::new(open()?), destination_dir)
         }
     }
 }
