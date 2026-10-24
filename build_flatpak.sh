@@ -32,6 +32,9 @@ scope="${FLATPAK_SCOPE:---system}"
 
 # Build date shown in the About dialog.
 build_date="$(date -u +%F)"
+# Passed to the app at launch (--packaging): host commands then go through
+# flatpak-spawn, "Open With" through the portal, and so on.
+packaging="flatpak"
 
 if ! command -v flatpak >/dev/null 2>&1; then
     echo "error: flatpak is not installed" >&2
@@ -57,10 +60,10 @@ for ref in org.gnome.Platform//50 org.gnome.Sdk//50 org.freedesktop.Sdk.Extensio
     fi
 done
 
-# Manifest copy with the build date filled in (same folder, so its
-# relative source path still points at the repo root).
+# Manifest copy with the build date and packaging filled in (same folder,
+# so its relative source path still points at the repo root).
 generated="export/flatpak/.${app_id}.generated.yml"
-sed -e "s/@BUILD_DATE@/$build_date/" "$manifest" > "$generated"
+sed -e "s/@BUILD_DATE@/$build_date/" -e "s/@PACKAGING@/$packaging/" "$manifest" > "$generated"
 
 echo "=== Building $app_id from $manifest ==="
 flatpak run --command=flatpak-builder org.flatpak.Builder \

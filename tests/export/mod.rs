@@ -1,0 +1,2 @@
+mod flatpak;
+mod snap;

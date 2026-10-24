@@ -1,6 +1,6 @@
 [package]
 name = "dupot-file-browser"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2024"
 description = "A simple, lightweight file browser for the Linux desktop"
 license = "LGPL-2.1-only"

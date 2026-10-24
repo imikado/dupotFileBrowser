@@ -4,18 +4,14 @@ fn main() {
     embed_build_info();
 }
 
-/// Exposes DUPOT_BUILD_DATE / DUPOT_BUILD_PACKAGE to the crate (read by
-/// `domain::entity::app_info`). Packaging scripts pass them as env variables.
+/// Exposes DUPOT_BUILD_DATE to the crate (read by `domain::entity::app_info`).
+/// Packaging scripts may pass it as an env variable; defaults to today.
 fn embed_build_info() {
-    for var in ["DUPOT_BUILD_DATE", "DUPOT_BUILD_PACKAGE"] {
-        println!("cargo:rerun-if-env-changed={var}");
-    }
+    println!("cargo:rerun-if-env-changed=DUPOT_BUILD_DATE");
 
     let date = env_value("DUPOT_BUILD_DATE").unwrap_or_else(today);
-    let package = env_value("DUPOT_BUILD_PACKAGE").unwrap_or_else(|| "source".into());
 
     println!("cargo:rustc-env=DUPOT_BUILD_DATE={date}");
-    println!("cargo:rustc-env=DUPOT_BUILD_PACKAGE={package}");
 }
 
 fn env_value(name: &str) -> Option<String> {

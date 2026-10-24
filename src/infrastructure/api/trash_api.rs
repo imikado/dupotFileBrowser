@@ -17,7 +17,7 @@ use crate::domain::entity::trash_entry_entity::TrashEntryEntity;
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::shared::path::{file_name, parent_dir};
 use crate::domain::shared::trash_info::{
-    build_trash_info, parse_trash_info, resolve_trash_info_path, topdir_trash_dirs,
+    HOME_TRASH_DIR, build_trash_info, parse_trash_info, resolve_trash_info_path, topdir_trash_dirs,
     trash_info_path, unique_trashed_name, user_mount_points,
 };
 use crate::infrastructure::api::file_system_api::FileSystemApi;
@@ -145,7 +145,7 @@ impl TrashApi {
 impl Default for TrashApi {
     fn default() -> Self {
         Self {
-            base_dir: FileSystemApi.home_dir().join(".local/share/Trash"),
+            base_dir: FileSystemApi.home_dir().join(HOME_TRASH_DIR),
             other_disks: true,
         }
     }

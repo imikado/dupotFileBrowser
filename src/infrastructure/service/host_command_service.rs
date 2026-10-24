@@ -6,18 +6,13 @@ use std::io::Read;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use crate::domain::shared::packaging::Packaging;
 use crate::domain::shared::shell::quote;
 use crate::infrastructure::service::packaging_service;
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn host_command(argv: &[String]) -> Command {
-    let mut full: Vec<String> = Vec::new();
-    if packaging_service::current() == Packaging::Flatpak {
-        full.extend(["flatpak-spawn".into(), "--host".into()]);
-    }
-    full.extend(argv.iter().cloned());
+    let full = packaging_service::current().host_argv(argv);
     let mut command = Command::new(&full[0]);
     command.args(&full[1..]);
     command

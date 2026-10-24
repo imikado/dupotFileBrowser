@@ -14,7 +14,7 @@ use crate::infrastructure::ui::app_context::{AppContext, BrowserEvent, EventSink
 use crate::infrastructure::ui::shared::alert_dialog::{show_confirm, show_error};
 use crate::infrastructure::ui::shared::color_picker_popup::show_color_picker;
 use crate::infrastructure::ui::shared::compress_dialog::show_compress_dialog;
-use crate::infrastructure::ui::shared::context_menu::{MenuItem, show_context_menu};
+use crate::infrastructure::ui::shared::context_menu::{MenuItem, show_sectioned_menu};
 use crate::infrastructure::ui::shared::open_with_popup::show_open_with_popup;
 use crate::infrastructure::ui::shared::properties_dialog::show_properties_dialog;
 use crate::infrastructure::ui::shared::rename_dialog::show_rename_dialog;
@@ -152,43 +152,13 @@ pub fn show_entry_menu(
         MenuItem::new(label, move || action(&target))
     };
 
-    let mut items = vec![item(tr("Open"), |t| (t.hooks.open)(&t.entry))];
+    let mut open = vec![item(tr("Open"), |t| (t.hooks.open)(&t.entry))];
     if !entry.is_dir {
-        items.push(item(tr("Open With…"), |t| {
+        open.push(item(tr("Open With…"), |t| {
             show_open_with_popup(&t.anchor, &t.ctx, &t.entry.path)
         }));
     }
-    if entry.is_image() {
-        items.push(item(tr("Use as Wallpaper"), |t| {
-            set_wallpaper(&t.anchor, &t.ctx, &t.entry.path)
-        }));
-    }
-    if entry.is_extractable_archive() {
-        items.push(item(tr("Extract"), |t| {
-            (t.events)(BrowserEvent::Extract(t.entry.path.clone()))
-        }));
-    }
-    if entry.is_dir {
-        items.push(item(tr("Add to favorites"), |t| {
-            t.ctx
-                .settings_mut()
-                .add_favorite(&t.entry.name, &t.entry.path.to_string_lossy());
-            t.ctx.save_settings();
-            (t.events)(BrowserEvent::FavoritesChanged);
-        }));
-    }
-    items.push(item(tr("Compress…"), |t| {
-        let events = t.events.clone();
-        let on_confirmed: Rc<dyn Fn(FileOperationEntity)> =
-            Rc::new(move |job| events(BrowserEvent::Job(job)));
-        show_compress_dialog(&t.anchor, &t.ctx, &t.entry.path, None, on_confirmed);
-    }));
-    items.push(item(tr("Copy"), |t| copy_to_clipboard(t, false)));
-    items.push(item(tr("Cut"), |t| copy_to_clipboard(t, true)));
-    items.push(item(tr("Copy Path"), |t| {
-        copy_text_to_clipboard(&t.anchor, &t.entry.path.to_string_lossy())
-    }));
-    items.push(item(tr("Open Terminal Here"), |t| {
+    open.push(item(tr("Open Terminal Here"), |t| {
         if !t.ctx.desktop.open_terminal(&t.entry.path) {
             show_error(
                 &t.anchor,
@@ -197,35 +167,78 @@ pub fn show_entry_menu(
             );
         }
     }));
-    items.push(item(tr("Rename"), |t| {
-        let target = t.clone();
-        let on_renamed: Rc<dyn Fn(PathBuf)> = Rc::new(move |destination| {
-            let moved_favorites = target
-                .ctx
-                .settings_mut()
-                .rename_favorites(&target.entry.path, &destination);
-            if moved_favorites {
-                target.ctx.save_settings();
-                (target.events)(BrowserEvent::FavoritesChanged);
-            }
-            (target.hooks.renamed)(&target.entry, destination);
-            (target.events)(BrowserEvent::FolderChanged(parent_dir(&target.entry.path)));
-        });
-        show_rename_dialog(&t.anchor, &t.ctx, &t.entry.path, None, on_renamed);
-    }));
-    items.push(item(tr("Add Color"), |t| {
-        let target = t.clone();
-        show_color_picker(&t.anchor, t.color.as_deref(), move |picked| {
-            target.ctx.set_color(&target.entry, picked.as_deref());
-            (target.hooks.recolored)(&target.entry);
-        });
-    }));
-    items.push(item(tr("Properties"), |t| {
-        show_properties_dialog(&t.anchor, &t.ctx, &t.entry.path)
-    }));
-    items.push(item(tr("Move to Trash"), confirm_trash).destructive());
 
-    show_context_menu(anchor, x, y, items);
+    let clipboard = vec![
+        item(tr("Cut"), |t| copy_to_clipboard(t, true)),
+        item(tr("Copy"), |t| copy_to_clipboard(t, false)),
+        item(tr("Copy Path"), |t| {
+            copy_text_to_clipboard(&t.anchor, &t.entry.path.to_string_lossy())
+        }),
+    ];
+
+    let mut organize = vec![
+        item(tr("Rename"), |t| {
+            let target = t.clone();
+            let on_renamed: Rc<dyn Fn(PathBuf)> = Rc::new(move |destination| {
+                let moved_favorites = target
+                    .ctx
+                    .settings_mut()
+                    .rename_favorites(&target.entry.path, &destination);
+                if moved_favorites {
+                    target.ctx.save_settings();
+                    (target.events)(BrowserEvent::FavoritesChanged);
+                }
+                (target.hooks.renamed)(&target.entry, destination);
+                (target.events)(BrowserEvent::FolderChanged(parent_dir(&target.entry.path)));
+            });
+            show_rename_dialog(&t.anchor, &t.ctx, &t.entry.path, None, on_renamed);
+        }),
+        item(tr("Add Color"), |t| {
+            let target = t.clone();
+            show_color_picker(&t.anchor, t.color.as_deref(), move |picked| {
+                target.ctx.set_color(&target.entry, picked.as_deref());
+                (target.hooks.recolored)(&target.entry);
+            });
+        }),
+    ];
+    if entry.is_dir {
+        organize.push(item(tr("Add to favorites"), |t| {
+            t.ctx
+                .settings_mut()
+                .add_favorite(&t.entry.name, &t.entry.path.to_string_lossy());
+            t.ctx.save_settings();
+            (t.events)(BrowserEvent::FavoritesChanged);
+        }));
+    }
+
+    let mut tools = vec![item(tr("Compress…"), |t| {
+        let events = t.events.clone();
+        let on_confirmed: Rc<dyn Fn(FileOperationEntity)> =
+            Rc::new(move |job| events(BrowserEvent::Job(job)));
+        show_compress_dialog(&t.anchor, &t.ctx, &t.entry.path, None, on_confirmed);
+    })];
+    if entry.is_extractable_archive() {
+        tools.push(item(tr("Extract"), |t| {
+            (t.events)(BrowserEvent::Extract(t.entry.path.clone()))
+        }));
+    }
+    if entry.is_image() {
+        tools.push(item(tr("Use as Wallpaper"), |t| {
+            set_wallpaper(&t.anchor, &t.ctx, &t.entry.path)
+        }));
+    }
+
+    let info = vec![item(tr("Properties"), |t| {
+        show_properties_dialog(&t.anchor, &t.ctx, &t.entry.path)
+    })];
+    let trash = vec![item(tr("Move to Trash"), confirm_trash).destructive()];
+
+    show_sectioned_menu(
+        anchor,
+        x,
+        y,
+        vec![open, clipboard, organize, tools, info, trash],
+    );
 }
 
 fn copy_to_clipboard(target: &Rc<Target>, cut: bool) {

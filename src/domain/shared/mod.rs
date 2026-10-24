@@ -1,5 +1,6 @@
 pub mod archive;
 pub mod folder_color;
+pub mod icon_theme;
 pub mod packaging;
 pub mod path;
 pub mod permissions;

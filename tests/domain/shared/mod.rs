@@ -1,5 +1,6 @@
 mod archive;
 mod folder_color;
+mod icon_theme;
 mod packaging;
 mod path;
 mod permissions;

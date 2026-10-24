@@ -30,4 +30,38 @@ impl Packaging {
     pub fn is_sandboxed(self) -> bool {
         self != Packaging::Native
     }
+
+    /// Variable holding the user's home: in a snap, `$HOME` is the snap's
+    /// private folder (`~/snap/<name>/<revision>`).
+    pub fn home_variable(self) -> &'static str {
+        match self {
+            Packaging::Snap => "SNAP_REAL_HOME",
+            Packaging::Flatpak | Packaging::Native => "HOME",
+        }
+    }
+
+    /// Prepended to host commands: Flatpak's runtime doesn't ship them.
+    pub fn host_command_prefix(self) -> &'static [&'static str] {
+        match self {
+            Packaging::Flatpak => &["flatpak-spawn", "--host"],
+            Packaging::Snap | Packaging::Native => &[],
+        }
+    }
+
+    /// `argv` as run on the host.
+    pub fn host_argv(self, argv: &[String]) -> Vec<String> {
+        self.host_command_prefix()
+            .iter()
+            .map(|arg| arg.to_string())
+            .chain(argv.iter().cloned())
+            .collect()
+    }
+
+    /// The host's own system folders, mounted by the sandbox.
+    pub fn host_system_dirs(self) -> &'static [&'static str] {
+        match self {
+            Packaging::Flatpak => &["/run/host/etc", "/run/host/usr"],
+            Packaging::Snap | Packaging::Native => &[],
+        }
+    }
 }

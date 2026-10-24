@@ -4,6 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::domain::shared::path::split_extension;
 
+/// The home Trash, relative to the user's home.
+pub const HOME_TRASH_DIR: &str = ".local/share/Trash";
+
 /// Content of the `.trashinfo` file for an item trashed from `original_path`
 /// at `deletion_date` (`YYYY-MM-DDThh:mm:ss`).
 pub fn build_trash_info(original_path: &str, deletion_date: &str) -> String {

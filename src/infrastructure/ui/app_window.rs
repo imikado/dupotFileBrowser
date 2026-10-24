@@ -14,6 +14,7 @@ use crate::domain::entity::app_info::APP;
 use crate::domain::entity::file_operation_entity::{FileOperationEntity, FileOperationKind};
 use crate::domain::entity::user_settings_entity::{Theme, ViewMode};
 use crate::domain::error::{DomainError, DomainResult};
+use crate::domain::shared::icon_theme::icon_theme_override;
 use crate::domain::shared::packaging::Packaging;
 use crate::domain::shared::path::{file_name, parent_dir};
 use crate::domain::usecase::destination::{Destination, extract_destination, paste_destination};
@@ -104,6 +105,29 @@ fn install_app_css() {
     }
 }
 
+/// Swaps the desktop's icon theme for the bundled fallback when it isn't
+/// visible (see `icon_theme_override`). Checked again whenever the desktop's
+/// theme arrives or changes (after startup).
+fn ensure_icon_theme_installed(display: &gdk::Display, theme: &gtk::IconTheme) {
+    let check = {
+        let theme = theme.clone();
+        move |settings: &gtk::Settings| {
+            let Some(name) = settings.gtk_icon_theme_name() else {
+                return;
+            };
+            // Through the setting, which outranks the desktop's XSETTINGS:
+            // the display's own theme only follows it.
+            if let Some(fallback) = icon_theme_override(&name, &theme.search_path(), Path::is_file)
+            {
+                settings.set_gtk_icon_theme_name(Some(fallback));
+            }
+        }
+    };
+    let settings = gtk::Settings::for_display(display);
+    check(&settings);
+    settings.connect_gtk_icon_theme_name_notify(check);
+}
+
 /// Makes `APP.id` resolvable as an icon name (About dialog, window icon)
 /// when the packages did not install it, by writing the embedded logo to
 /// the cache and adding that folder to the icon theme's search path.
@@ -112,6 +136,7 @@ fn install_app_icon() {
         return;
     };
     let theme = gtk::IconTheme::for_display(&display);
+    ensure_icon_theme_installed(&display, &theme);
     if !theme.has_icon(APP.id) {
         let dir = glib::user_cache_dir().join(APP.id).join("icons");
         let written = std::fs::create_dir_all(&dir)
@@ -251,18 +276,15 @@ impl MainWindow {
         let home_path = ctx.file_system.home_dir();
         let trash_path = ctx.trash.trash_dir();
         // The host's own /etc and /usr, mounted under /run/host by Flatpak.
-        let host_paths = if ctx.desktop.packaging() == Packaging::Flatpak {
-            [
-                (tr("Host /etc"), "/run/host/etc"),
-                (tr("Host /usr"), "/run/host/usr"),
-            ]
-            .into_iter()
-            .filter(|(_, path)| ctx.file_system.is_dir(Path::new(path)))
-            .map(|(label, path)| (label, PathBuf::from(path)))
-            .collect()
-        } else {
-            Vec::new()
-        };
+        let host_dirs = ctx.desktop.packaging().host_system_dirs();
+        let host_paths = [
+            (tr("Host /etc"), "/run/host/etc"),
+            (tr("Host /usr"), "/run/host/usr"),
+        ]
+        .into_iter()
+        .filter(|(_, path)| host_dirs.contains(path) && ctx.file_system.is_dir(Path::new(path)))
+        .map(|(label, path)| (label, PathBuf::from(path)))
+        .collect();
 
         let up_button = gtk::Button::from_icon_name("go-up-symbolic");
         up_button.set_tooltip_text(Some(&tr("Parent folder")));

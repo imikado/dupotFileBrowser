@@ -42,7 +42,9 @@ desktop.
 
 ### File operations
 - Copy, cut / move, paste, rename, and **move to Trash**
-- **Trash page** — restore items or delete them permanently, empty the Trash
+- **Trash page** — restore items or delete them permanently, empty the Trash;
+  items of a USB key or second disk go to that disk's own trash, like in
+  Nautilus and Nemo
 - A notification confirms each finished copy, move, compression or extraction
 - **Compress** files and folders to `.zip`, `.tar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`
 - **Extract** archives, including `.rar`
@@ -114,6 +116,23 @@ flatpak run org.dupot.filebrowser
 The bundle targets the GNOME 50 runtime; the script installs the SDK and
 the Rust extension from Flathub when missing.
 
+### Snap
+
+```sh
+./build_snap.sh                    # → export/snap/dupot-file-browser_<version>_<arch>.snap
+./build_snap.sh --install          # same, then install locally and connect the Trash
+./build_snap.sh --publish [edge]   # upload to the Snap Store (after `snapcraft login`)
+```
+
+Built on `core26` with its own GTK4/libadwaita (the GNOME content snaps
+are too old for libadwaita 1.7). The Trash and the color tags of the home
+folder's items need `personal-files` interfaces:
+`sudo snap connect dupot-file-browser:trash` and
+`sudo snap connect dupot-file-browser:color-tags` (for the Snap Store,
+auto-connection must be requested on forum.snapcraft.io). Under strict
+confinement, *Open Terminal Here* and *Use as Wallpaper* can't reach the
+host's programs.
+
 ### Nix
 
 ```sh
@@ -128,6 +147,21 @@ packages, e.g. on Fedora `sudo dnf install gtk4-devel libadwaita-devel`, then:
 ```sh
 cargo run --release
 ```
+
+### Packaging option
+
+The app is told at launch how it was installed:
+
+```sh
+dupot-file-browser --packaging=flatpak   # set by the Flatpak launcher (build_flatpak.sh)
+dupot-file-browser --packaging=snap      # set by export/snap/launcher.sh (checked by build_snap.sh)
+dupot-file-browser                       # native: the default
+```
+
+It decides how host programs are run (`flatpak-spawn --host` in Flatpak),
+whether *Open With* uses the desktop portal (Flatpak and Snap), whether the
+host `/etc` & `/usr` shortcuts are offered (Flatpak), and it is shown in
+**☰ → About → Troubleshooting**.
 
 ## 🛠️ Development
 

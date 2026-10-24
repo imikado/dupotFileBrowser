@@ -32,7 +32,6 @@
 
           # Shown in the About dialog (the Nix sandbox has no .git).
           env = {
-            DUPOT_BUILD_PACKAGE = "nix";
             DUPOT_BUILD_DATE =
               let d = self.lastModifiedDate or "";
               in if d == "" then "" else

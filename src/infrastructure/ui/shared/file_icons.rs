@@ -89,6 +89,16 @@ fn load_texture(bytes: &'static [u8]) -> Option<gdk::Texture> {
     gdk::Texture::from_bytes(&glib::Bytes::from_static(bytes)).ok()
 }
 
+/// Keys of the embedded icons.
+pub fn baked_icon_keys() -> impl Iterator<Item = &'static str> {
+    ICONS.iter().map(|(key, _, _)| *key)
+}
+
+/// Embedded icon `key`, decoded the way it's drawn without the system theme.
+pub fn baked_icon(key: &str, dark: bool) -> Option<gdk::Texture> {
+    load_texture(icon_bytes(key, dark))
+}
+
 fn baked_texture(key: &str, dark: bool, size: i32) -> Option<gdk::Texture> {
     let cache_key = (key.to_string(), dark, size);
     if let Some(texture) = TEXTURES.with_borrow(|cache| cache.get(&cache_key).cloned()) {
@@ -154,7 +164,7 @@ fn system_icon(key: &str, size: i32) -> Option<gtk::IconPaintable> {
 
 /// Tinted folder icon: the system theme's own artwork when available as a
 /// file (crisper, and matching uncolored folders), else the baked one.
-fn tinted_folder(hex: &str, size: i32) -> Option<gdk::Texture> {
+pub fn tinted_folder(hex: &str, size: i32) -> Option<gdk::Texture> {
     let cache_key = (hex.to_string(), USE_SYSTEM_THEME.get().to_string(), size);
     if let Some(cached) = TINTED.with_borrow(|cache| cache.get(&cache_key).cloned()) {
         return cached;

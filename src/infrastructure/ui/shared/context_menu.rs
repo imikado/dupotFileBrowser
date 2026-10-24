@@ -69,11 +69,35 @@ pub fn attached_popover(
 
 /// Menu pointing at (`x`, `y`) in `parent`.
 pub fn show_context_menu(parent: &impl IsA<gtk::Widget>, x: f64, y: f64, items: Vec<MenuItem>) {
+    show_sectioned_menu(parent, x, y, vec![items]);
+}
+
+/// Menu of `sections` separated by lines; empty sections are skipped.
+pub fn show_sectioned_menu(
+    parent: &impl IsA<gtk::Widget>,
+    x: f64,
+    y: f64,
+    sections: Vec<Vec<MenuItem>>,
+) {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.add_css_class("menu");
     let popover = attached_popover(parent, &content);
     popover.set_pointing_to(Some(&gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
 
+    let sections = sections.into_iter().filter(|section| !section.is_empty());
+    for (index, section) in sections.enumerate() {
+        if index > 0 {
+            let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
+            separator.set_margin_top(4);
+            separator.set_margin_bottom(4);
+            content.append(&separator);
+        }
+        append_items(&content, &popover, section);
+    }
+    popup_deferred(&popover);
+}
+
+fn append_items(content: &gtk::Box, popover: &gtk::Popover, items: Vec<MenuItem>) {
     for item in items {
         let label = gtk::Label::new(Some(&item.label));
         label.set_xalign(0.0);
@@ -97,5 +121,4 @@ pub fn show_context_menu(parent: &impl IsA<gtk::Widget>, x: f64, y: f64, items: 
         });
         content.append(&button);
     }
-    popup_deferred(&popover);
 }
