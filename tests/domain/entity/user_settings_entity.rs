@@ -1,5 +1,5 @@
 use dupot_file_browser::domain::entity::user_settings_entity::{
-    Language, Theme, UserSettingsEntity, ViewMode, resolve_system_language,
+    FavoriteMove, Language, Theme, UserSettingsEntity, ViewMode, resolve_system_language,
 };
 
 #[test]
@@ -55,6 +55,50 @@ fn favorites_are_unique_by_path() {
     settings.remove_favorite("/a");
     assert!(!settings.is_favorite("/a"));
     assert!(settings.is_favorite("/b"));
+}
+
+fn favorite_paths(settings: &UserSettingsEntity) -> Vec<&str> {
+    settings
+        .favorite_list
+        .iter()
+        .map(|favorite| favorite.path.as_str())
+        .collect()
+}
+
+#[test]
+fn favorites_move_up_and_down_within_the_list() {
+    let mut settings = UserSettingsEntity::default();
+    for path in ["/a", "/b", "/c"] {
+        settings.add_favorite(path, path);
+    }
+    assert!(settings.move_favorite("/b", FavoriteMove::Up));
+    assert_eq!(favorite_paths(&settings), ["/b", "/a", "/c"]);
+    assert!(settings.move_favorite("/a", FavoriteMove::Down));
+    assert_eq!(favorite_paths(&settings), ["/b", "/c", "/a"]);
+}
+
+#[test]
+fn favorites_never_move_past_the_ends() {
+    let mut settings = UserSettingsEntity::default();
+    for path in ["/a", "/b"] {
+        settings.add_favorite(path, path);
+    }
+    assert!(!settings.can_move_favorite("/a", FavoriteMove::Up));
+    assert!(settings.can_move_favorite("/a", FavoriteMove::Down));
+    assert!(settings.can_move_favorite("/b", FavoriteMove::Up));
+    assert!(!settings.can_move_favorite("/b", FavoriteMove::Down));
+    assert!(!settings.move_favorite("/a", FavoriteMove::Up));
+    assert!(!settings.move_favorite("/b", FavoriteMove::Down));
+    assert!(!settings.move_favorite("/unknown", FavoriteMove::Up));
+    assert_eq!(favorite_paths(&settings), ["/a", "/b"]);
+}
+
+#[test]
+fn a_single_favorite_cannot_move() {
+    let mut settings = UserSettingsEntity::default();
+    settings.add_favorite("A", "/a");
+    assert!(!settings.can_move_favorite("/a", FavoriteMove::Up));
+    assert!(!settings.can_move_favorite("/a", FavoriteMove::Down));
 }
 
 #[test]

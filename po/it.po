@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dupot_file_browser\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 20:10+0200\n"
+"POT-Creation-Date: 2026-10-24 16:33+0200\n"
 "PO-Revision-Date: 2026-08-16 09:34+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/infrastructure/api/archive_api.rs:119
+#: src/infrastructure/api/archive_api.rs:125
 msgid ""
 "No RAR-capable tool was found on this system (tried unrar, 7z, unar, bsdtar "
 "— install one of these to extract .rar archives)."
@@ -26,82 +26,121 @@ msgstr ""
 "questo sistema (provati unrar, 7z, unar, bsdtar — installane uno per "
 "estrarre archivi .rar)."
 
-#: src/infrastructure/ui/app_window.rs:148
-#: src/infrastructure/ui/app_window.rs:815
+#: src/infrastructure/ui/app_window.rs:272
+#: src/infrastructure/ui/app_window.rs:386
+#: src/infrastructure/ui/app_window.rs:1171
 msgid "File browser"
 msgstr "Esplora file"
 
-#: src/infrastructure/ui/app_window.rs:155
+#: src/infrastructure/ui/app_window.rs:281
 msgid "Host /etc"
 msgstr "/etc dell'host"
 
-#: src/infrastructure/ui/app_window.rs:156
+#: src/infrastructure/ui/app_window.rs:282
 msgid "Host /usr"
 msgstr "/usr dell'host"
 
-#: src/infrastructure/ui/app_window.rs:167
+#: src/infrastructure/ui/app_window.rs:290
 msgid "Parent folder"
 msgstr "Cartella superiore"
 
-#: src/infrastructure/ui/app_window.rs:171
+#: src/infrastructure/ui/app_window.rs:293
 msgid "Type a path and press Enter to go there"
 msgstr "Digita un percorso e premi Invio per accedervi"
 
-#: src/infrastructure/ui/app_window.rs:173
+#: src/infrastructure/ui/app_window.rs:296
+msgid "Show sidebar"
+msgstr "Mostra la barra laterale"
+
+#: src/infrastructure/ui/app_window.rs:298
 #: src/infrastructure/ui/menu/parameters_dialog.rs:52
 msgid "Parameters"
 msgstr "Impostazioni"
 
-#: src/infrastructure/ui/app_window.rs:174
+#: src/infrastructure/ui/app_window.rs:299
 msgid "About"
 msgstr "Informazioni"
 
-#: src/infrastructure/ui/app_window.rs:243
+#: src/infrastructure/ui/app_window.rs:302
+msgid "Main menu"
+msgstr "Menu principale"
+
+#: src/infrastructure/ui/app_window.rs:361
 msgid "New Tab"
 msgstr "Nuova scheda"
 
-#: src/infrastructure/ui/app_window.rs:423
-#: src/infrastructure/ui/app_window.rs:532
+#: src/infrastructure/ui/app_window.rs:624
+msgid "Places"
+msgstr "Posizioni"
+
+#: src/infrastructure/ui/app_window.rs:627
+#: src/infrastructure/ui/app_window.rs:779
 msgid "Home"
 msgstr "Home"
 
-#: src/infrastructure/ui/app_window.rs:426
-#: src/infrastructure/ui/app_window.rs:528
-#: src/infrastructure/ui/app_window.rs:577
-#: src/infrastructure/ui/trash_page.rs:36
+#: src/infrastructure/ui/app_window.rs:633
+#: src/infrastructure/ui/app_window.rs:775
+#: src/infrastructure/ui/app_window.rs:843
+#: src/infrastructure/ui/trash_page.rs:40
 msgid "Trash"
 msgstr "Cestino"
 
-#: src/infrastructure/ui/app_window.rs:664
+#: src/infrastructure/ui/app_window.rs:648
+msgid "Favorites"
+msgstr "Preferiti"
+
+#: src/infrastructure/ui/app_window.rs:662
+msgid "Move Up"
+msgstr "Sposta su"
+
+#: src/infrastructure/ui/app_window.rs:665
+msgid "Move Down"
+msgstr "Sposta giù"
+
+#: src/infrastructure/ui/app_window.rs:675
+msgid "Remove from favorites"
+msgstr "Rimuovi dai preferiti"
+
+#: src/infrastructure/ui/app_window.rs:998
 msgid "Move file"
 msgstr "Sposta file"
 
-#: src/infrastructure/ui/app_window.rs:666
+#: src/infrastructure/ui/app_window.rs:1000
 msgid "Paste the file"
 msgstr "Incolla il file"
 
-#: src/infrastructure/ui/app_window.rs:698
+#: src/infrastructure/ui/app_window.rs:1032
+msgid "Cannot paste here"
+msgstr "Impossibile incollare qui"
+
+#: src/infrastructure/ui/app_window.rs:1034
+#, rust-format
+msgid "\"{name}\" cannot be pasted into itself or one of its subfolders."
+msgstr ""
+"\"{name}\" non può essere incollato in sé stesso o in una sua sottocartella."
+
+#: src/infrastructure/ui/app_window.rs:1048
 msgid "File already exists"
 msgstr "Il file esiste già"
 
-#: src/infrastructure/ui/app_window.rs:700
+#: src/infrastructure/ui/app_window.rs:1050
 #, rust-format
 msgid "\"{name}\" already exists in this folder. Choose a new name."
 msgstr "\"{name}\" esiste già in questa cartella. Scegli un nuovo nome."
 
-#: src/infrastructure/ui/app_window.rs:703
+#: src/infrastructure/ui/app_window.rs:1053
 msgid "Move"
 msgstr "Sposta"
 
-#: src/infrastructure/ui/app_window.rs:703
+#: src/infrastructure/ui/app_window.rs:1053
 msgid "Paste"
 msgstr "Incolla"
 
-#: src/infrastructure/ui/app_window.rs:728
+#: src/infrastructure/ui/app_window.rs:1078
 msgid "Folder already exists"
 msgstr "La cartella esiste già"
 
-#: src/infrastructure/ui/app_window.rs:730
+#: src/infrastructure/ui/app_window.rs:1080
 #, rust-format
 msgid ""
 "\"{name}\" already exists in this folder. Choose a name for the extracted "
@@ -110,31 +149,31 @@ msgstr ""
 "\"{name}\" esiste già in questa cartella. Scegli un nome per la cartella "
 "estratta."
 
-#: src/infrastructure/ui/app_window.rs:733
-#: src/infrastructure/ui/shared/entry_menu.rs:150
+#: src/infrastructure/ui/app_window.rs:1083
+#: src/infrastructure/ui/shared/entry_menu.rs:221
 msgid "Extract"
 msgstr "Estrai"
 
-#: src/infrastructure/ui/app_window.rs:841
+#: src/infrastructure/ui/app_window.rs:1197
 #, rust-format
 msgid "{count} pending"
 msgstr "{count} in sospeso"
 
-#: src/infrastructure/ui/details_page.rs:28
+#: src/infrastructure/ui/details_page.rs:31
 msgid "Folder"
 msgstr "Cartella"
 
-#: src/infrastructure/ui/details_page.rs:30
+#: src/infrastructure/ui/details_page.rs:33
 #, rust-format
 msgid "{extension} File"
 msgstr "File {extension}"
 
-#: src/infrastructure/ui/details_page.rs:31
+#: src/infrastructure/ui/details_page.rs:34
 msgid "File"
 msgstr "File"
 
-#: src/infrastructure/ui/details_page.rs:79
-#: src/infrastructure/ui/grid_page.rs:56 src/infrastructure/ui/path_page.rs:54
+#: src/infrastructure/ui/details_page.rs:82
+#: src/infrastructure/ui/grid_page.rs:59 src/infrastructure/ui/path_page.rs:54
 msgid "Empty folder"
 msgstr "Cartella vuota"
 
@@ -175,7 +214,7 @@ msgstr "Lingua"
 msgid "Use system icon theme"
 msgstr "Usa il tema delle icone di sistema"
 
-#: src/infrastructure/ui/menu/parameters_dialog.rs:79
+#: src/infrastructure/ui/menu/parameters_dialog.rs:80
 msgid ""
 "Show the same file icons as your file manager (Nemo, Nautilus...). Falls "
 "back to the built-in icons for any file type your theme doesn't cover."
@@ -183,19 +222,19 @@ msgstr ""
 "Mostra le stesse icone dei file del tuo gestore file (Nemo, Nautilus...). "
 "Utilizza le icone integrate per i tipi di file non coperti dal tuo tema."
 
-#: src/infrastructure/ui/menu/parameters_dialog.rs:83
+#: src/infrastructure/ui/menu/parameters_dialog.rs:85
 msgid "Show hidden files"
 msgstr "Mostra i file nascosti"
 
-#: src/infrastructure/ui/menu/parameters_dialog.rs:84
+#: src/infrastructure/ui/menu/parameters_dialog.rs:86
 msgid "Display files and folders whose name starts with a dot."
 msgstr "Mostra i file e le cartelle il cui nome inizia con un punto."
 
-#: src/infrastructure/ui/menu/parameters_dialog.rs:88
+#: src/infrastructure/ui/menu/parameters_dialog.rs:90
 msgid "Open with a single click"
 msgstr "Apri con un solo clic"
 
-#: src/infrastructure/ui/menu/parameters_dialog.rs:89
+#: src/infrastructure/ui/menu/parameters_dialog.rs:92
 msgid ""
 "In Grid and Details view, open a file or folder with a single click instead "
 "of a double click. Doesn't affect Columns view."
@@ -203,7 +242,7 @@ msgstr ""
 "Nella vista Griglia e Dettagli, apre un file o una cartella con un solo clic "
 "invece di un doppio clic. Non influisce sulla vista Colonne."
 
-#: src/infrastructure/ui/menu/parameters_dialog.rs:100
+#: src/infrastructure/ui/menu/parameters_dialog.rs:104
 msgid "Save"
 msgstr "Salva"
 
@@ -231,95 +270,104 @@ msgstr "Comprimi"
 msgid "Choose an archive name and format for \"{name}\"."
 msgstr "Scegli un nome e un formato di archivio per \"{name}\"."
 
-#: src/infrastructure/ui/shared/entry_menu.rs:98
+#: src/infrastructure/ui/shared/entry_menu.rs:92
+#, rust-format
+msgid "\"{name}\" could not be opened."
+msgstr "Impossibile aprire \"{name}\"."
+
+#: src/infrastructure/ui/shared/entry_menu.rs:97
+msgid "Could not open file"
+msgstr "Impossibile aprire il file"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:115
 msgid "Could not set wallpaper"
 msgstr "Impossibile impostare lo sfondo"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:99
+#: src/infrastructure/ui/shared/entry_menu.rs:116
 msgid "No supported desktop environment setting could be found."
 msgstr ""
 "Non è stata trovata alcuna impostazione supportata per l'ambiente desktop."
 
-#: src/infrastructure/ui/shared/entry_menu.rs:138
+#: src/infrastructure/ui/shared/entry_menu.rs:155
 #: src/infrastructure/ui/shared/open_with_popup.rs:105
 #: src/infrastructure/ui/shared/properties_dialog.rs:325
 msgid "Open"
 msgstr "Apri"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:140
+#: src/infrastructure/ui/shared/entry_menu.rs:157
 msgid "Open With…"
 msgstr "Apri con…"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:145
-msgid "Use as Wallpaper"
-msgstr "Usa come sfondo"
-
-#: src/infrastructure/ui/shared/entry_menu.rs:155
-msgid "Add to favorites"
-msgstr "Aggiungi ai preferiti"
-
-#: src/infrastructure/ui/shared/entry_menu.rs:163
-msgid "Compress…"
-msgstr "Comprimi…"
-
-#: src/infrastructure/ui/shared/entry_menu.rs:169
-msgid "Copy"
-msgstr "Copia"
-
-#: src/infrastructure/ui/shared/entry_menu.rs:170
-msgid "Cut"
-msgstr "Taglia"
-
-#: src/infrastructure/ui/shared/entry_menu.rs:171
-msgid "Copy Path"
-msgstr "Copia percorso"
-
-#: src/infrastructure/ui/shared/entry_menu.rs:174
+#: src/infrastructure/ui/shared/entry_menu.rs:161
 msgid "Open Terminal Here"
 msgstr "Apri terminale qui"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:178
+#: src/infrastructure/ui/shared/entry_menu.rs:165
 msgid "No terminal found"
 msgstr "Nessun terminale trovato"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:179
+#: src/infrastructure/ui/shared/entry_menu.rs:166
 msgid "No terminal emulator could be found on this system."
 msgstr ""
 "Non è stato possibile trovare alcun emulatore di terminale su questo sistema."
 
-#: src/infrastructure/ui/shared/entry_menu.rs:183
+#: src/infrastructure/ui/shared/entry_menu.rs:172
+msgid "Cut"
+msgstr "Taglia"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:173
+msgid "Copy"
+msgstr "Copia"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:174
+msgid "Copy Path"
+msgstr "Copia percorso"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:180
 #: src/infrastructure/ui/shared/rename_dialog.rs:25
 #: src/infrastructure/ui/shared/rename_dialog.rs:27
 msgid "Rename"
 msgstr "Rinomina"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:189
+#: src/infrastructure/ui/shared/entry_menu.rs:196
 msgid "Add Color"
 msgstr "Aggiungi colore"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:196
+#: src/infrastructure/ui/shared/entry_menu.rs:205
+msgid "Add to favorites"
+msgstr "Aggiungi ai preferiti"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:214
+msgid "Compress…"
+msgstr "Comprimi…"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:226
+msgid "Use as Wallpaper"
+msgstr "Usa come sfondo"
+
+#: src/infrastructure/ui/shared/entry_menu.rs:231
 msgid "Properties"
 msgstr "Proprietà"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:199
-#: src/infrastructure/ui/shared/entry_menu.rs:219
+#: src/infrastructure/ui/shared/entry_menu.rs:234
+#: src/infrastructure/ui/shared/entry_menu.rs:259
 msgid "Move to Trash"
 msgstr "Sposta nel cestino"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:217
+#: src/infrastructure/ui/shared/entry_menu.rs:257
 msgid "Move to Trash?"
 msgstr "Spostare nel cestino?"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:218
+#: src/infrastructure/ui/shared/entry_menu.rs:258
 #, rust-format
 msgid "\"{name}\" will be moved to the Trash."
 msgstr "\"{name}\" verrà spostato nel cestino."
 
-#: src/infrastructure/ui/shared/entry_menu.rs:227
+#: src/infrastructure/ui/shared/entry_menu.rs:271
 msgid "Could not move to Trash"
 msgstr "Impossibile spostare nel cestino"
 
-#: src/infrastructure/ui/shared/entry_menu.rs:229
+#: src/infrastructure/ui/shared/entry_menu.rs:273
 #, rust-format
 msgid "\"{name}\" could not be moved to the Trash."
 msgstr "Impossibile spostare \"{name}\" nel cestino."
@@ -461,68 +509,64 @@ msgstr "Avvia"
 msgid "Choose a new name for \"{name}\"."
 msgstr "Scegli un nuovo nome per \"{name}\"."
 
-#: src/infrastructure/ui/shared/rename_dialog.rs:38
+#: src/infrastructure/ui/shared/rename_dialog.rs:42
 #, rust-format
 msgid "Could not rename \"{name}\"."
 msgstr "Impossibile rinominare \"{name}\"."
 
-#: src/infrastructure/ui/shared/rename_dialog.rs:42
+#: src/infrastructure/ui/shared/rename_dialog.rs:46
 msgid "Rename failed"
 msgstr "Rinomina non riuscita"
 
-#: src/infrastructure/ui/shared/side_menu.rs:136
-msgid "Remove from favorites"
-msgstr "Rimuovi dai preferiti"
-
-#: src/infrastructure/ui/shared/view_mode_switcher.rs:24
+#: src/infrastructure/ui/shared/view_mode_switcher.rs:25
 msgid "Columns"
 msgstr "Colonne"
 
-#: src/infrastructure/ui/shared/view_mode_switcher.rs:25
+#: src/infrastructure/ui/shared/view_mode_switcher.rs:26
 msgid "Grid"
 msgstr "Griglia"
 
-#: src/infrastructure/ui/shared/view_mode_switcher.rs:26
+#: src/infrastructure/ui/shared/view_mode_switcher.rs:27
 msgid "Details"
 msgstr "Dettagli"
 
-#: src/infrastructure/ui/shared/view_mode_switcher.rs:37
+#: src/infrastructure/ui/shared/view_mode_switcher.rs:38
 msgid "View"
 msgstr "Visualizzazione"
 
-#: src/infrastructure/ui/shared/view_mode_switcher.rs:57
+#: src/infrastructure/ui/shared/view_mode_switcher.rs:58
 msgid "Icon size"
 msgstr "Dimensione icone"
 
-#: src/infrastructure/ui/trash_page.rs:41
-#: src/infrastructure/ui/trash_page.rs:200
+#: src/infrastructure/ui/trash_page.rs:45
+#: src/infrastructure/ui/trash_page.rs:217
 msgid "Empty Trash"
 msgstr "Svuota cestino"
 
-#: src/infrastructure/ui/trash_page.rs:60
+#: src/infrastructure/ui/trash_page.rs:64
 msgid "Trash is empty"
 msgstr "Il cestino è vuoto"
 
-#: src/infrastructure/ui/trash_page.rs:113
+#: src/infrastructure/ui/trash_page.rs:115
 #, rust-format
 msgid "Deleted {when}"
 msgstr "Eliminato il {when}"
 
-#: src/infrastructure/ui/trash_page.rs:122
+#: src/infrastructure/ui/trash_page.rs:124
 msgid "Restore"
 msgstr "Ripristina"
 
-#: src/infrastructure/ui/trash_page.rs:123
-#: src/infrastructure/ui/trash_page.rs:174
+#: src/infrastructure/ui/trash_page.rs:127
+#: src/infrastructure/ui/trash_page.rs:190
 msgid "Delete Permanently"
 msgstr "Elimina definitivamente"
 
-#: src/infrastructure/ui/trash_page.rs:145
+#: src/infrastructure/ui/trash_page.rs:151
 #, rust-format
 msgid "\"{name}\" has no recorded original location."
 msgstr "\"{name}\" non ha una posizione originale registrata."
 
-#: src/infrastructure/ui/trash_page.rs:148
+#: src/infrastructure/ui/trash_page.rs:154
 #, rust-format
 msgid ""
 "\"{name}\" already exists at its original location:\n"
@@ -531,51 +575,51 @@ msgstr ""
 "\"{name}\" esiste già nella sua posizione originale:\n"
 "{path}"
 
-#: src/infrastructure/ui/trash_page.rs:155
+#: src/infrastructure/ui/trash_page.rs:161
 #, rust-format
 msgid "\"{name}\" could not be restored."
 msgstr "Impossibile ripristinare \"{name}\"."
 
-#: src/infrastructure/ui/trash_page.rs:160
+#: src/infrastructure/ui/trash_page.rs:166
 msgid "Could not restore"
 msgstr "Impossibile ripristinare"
 
-#: src/infrastructure/ui/trash_page.rs:169
+#: src/infrastructure/ui/trash_page.rs:185
 msgid "Delete Permanently?"
 msgstr "Eliminare definitivamente?"
 
-#: src/infrastructure/ui/trash_page.rs:171
+#: src/infrastructure/ui/trash_page.rs:187
 #, rust-format
 msgid "\"{name}\" will be permanently deleted. This cannot be undone."
 msgstr ""
 "\"{name}\" verrà eliminato definitivamente. Questa azione non può essere "
 "annullata."
 
-#: src/infrastructure/ui/trash_page.rs:181
+#: src/infrastructure/ui/trash_page.rs:197
 msgid "Could not delete"
 msgstr "Impossibile eliminare"
 
-#: src/infrastructure/ui/trash_page.rs:183
+#: src/infrastructure/ui/trash_page.rs:199
 #, rust-format
 msgid "\"{name}\" could not be permanently deleted."
 msgstr "Impossibile eliminare definitivamente \"{name}\"."
 
-#: src/infrastructure/ui/trash_page.rs:198
+#: src/infrastructure/ui/trash_page.rs:215
 msgid "Empty Trash?"
 msgstr "Svuotare il cestino?"
 
-#: src/infrastructure/ui/trash_page.rs:199
+#: src/infrastructure/ui/trash_page.rs:216
 msgid ""
 "All items in the Trash will be permanently deleted. This cannot be undone."
 msgstr ""
 "Tutti gli elementi nel cestino verranno eliminati definitivamente. Questa "
 "azione non può essere annullata."
 
-#: src/infrastructure/ui/trash_page.rs:207
+#: src/infrastructure/ui/trash_page.rs:224
 msgid "Could not empty Trash"
 msgstr "Impossibile svuotare il cestino"
 
-#: src/infrastructure/ui/trash_page.rs:208
+#: src/infrastructure/ui/trash_page.rs:225
 msgid "Some items could not be permanently deleted."
 msgstr "Non è stato possibile eliminare definitivamente alcuni elementi."
 
@@ -706,15 +750,6 @@ msgstr "Impossibile estrarre \"{name}\"."
 msgid "Could not copy \"{name}\" to this folder."
 msgstr "Impossibile copiare \"{name}\" in questa cartella."
 
-#~ msgid "Extract Here"
-#~ msgstr "Estrai qui"
-
-#~ msgid "Switch to light mode"
-#~ msgstr "Passa alla modalità chiara"
-
-#~ msgid "Switch to dark mode"
-#~ msgstr "Passa alla modalità scura"
-
 #, python-brace-format
 msgid "\"{name}\" moved"
 msgstr "\"{name}\" spostato"
@@ -731,28 +766,11 @@ msgstr "\"{name}\" estratto"
 msgid "\"{name}\" copied"
 msgstr "\"{name}\" copiato"
 
-msgid "Show sidebar"
-msgstr "Mostra la barra laterale"
+#~ msgid "Extract Here"
+#~ msgstr "Estrai qui"
 
-msgid "Places"
-msgstr "Posizioni"
+#~ msgid "Switch to light mode"
+#~ msgstr "Passa alla modalità chiara"
 
-msgid "Favorites"
-msgstr "Preferiti"
-
-msgid "Main menu"
-msgstr "Menu principale"
-
-msgid "Cannot paste here"
-msgstr "Impossibile incollare qui"
-
-#, python-brace-format
-msgid "\"{name}\" cannot be pasted into itself or one of its subfolders."
-msgstr "\"{name}\" non può essere incollato in sé stesso o in una sua sottocartella."
-
-msgid "Could not open file"
-msgstr "Impossibile aprire il file"
-
-#, python-brace-format
-msgid "\"{name}\" could not be opened."
-msgstr "Impossibile aprire \"{name}\"."
+#~ msgid "Switch to dark mode"
+#~ msgstr "Passa alla modalità scura"

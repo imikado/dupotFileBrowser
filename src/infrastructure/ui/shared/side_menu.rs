@@ -8,8 +8,7 @@ use std::rc::Rc;
 use gtk::prelude::*;
 use gtk::{gdk, glib};
 
-use crate::infrastructure::service::i18n_service::tr;
-use crate::infrastructure::ui::shared::context_menu::{MenuItem, show_context_menu};
+use crate::infrastructure::ui::shared::context_menu::{MenuItem, show_sectioned_menu};
 
 pub type PathCallback = Rc<dyn Fn(PathBuf)>;
 
@@ -19,8 +18,15 @@ pub struct SideMenuItem {
     pub label: String,
     pub path: PathBuf,
     pub on_activate: PathCallback,
-    /// Offers "Remove from favorites" on right-click when set.
-    pub on_remove: Option<PathCallback>,
+    /// Right-click menu, in sections; none when empty.
+    pub menu: Vec<Vec<SideMenuAction>>,
+}
+
+/// A right-click menu entry, given the item's path.
+pub struct SideMenuAction {
+    pub label: String,
+    pub on_activate: PathCallback,
+    pub destructive: bool,
 }
 
 pub enum SideMenuEntry {
@@ -123,31 +129,43 @@ fn item_row(item: &Rc<SideMenuItem>) -> gtk::ListBoxRow {
     row.set_child(Some(&content));
     row.set_tooltip_text(Some(&item.path.to_string_lossy()));
 
-    if item.on_remove.is_some() {
+    if !item.menu.is_empty() {
         let click = gtk::GestureClick::new();
         click.set_button(gdk::BUTTON_SECONDARY);
         let (item, weak_row) = (item.clone(), row.downgrade());
         click.connect_pressed(move |gesture, _, x, y| {
             gesture.set_state(gtk::EventSequenceState::Claimed);
-            let (Some(row), Some(on_remove)) = (weak_row.upgrade(), item.on_remove.clone()) else {
+            let Some(row) = weak_row.upgrade() else {
                 return;
             };
-            let path = item.path.clone();
+            let item = item.clone();
             glib::idle_add_local_full(glib::Priority::HIGH_IDLE, move || {
-                let (on_remove, path) = (on_remove.clone(), path.clone());
-                show_context_menu(
-                    &row,
-                    x,
-                    y,
-                    vec![
-                        MenuItem::new(tr("Remove from favorites"), move || on_remove(path.clone()))
-                            .destructive(),
-                    ],
-                );
+                show_sectioned_menu(&row, x, y, menu_sections(&item));
                 glib::ControlFlow::Break
             });
         });
         row.add_controller(click);
     }
     row
+}
+
+fn menu_sections(item: &SideMenuItem) -> Vec<Vec<MenuItem>> {
+    item.menu
+        .iter()
+        .map(|section| {
+            section
+                .iter()
+                .map(|action| {
+                    let (on_activate, path) = (action.on_activate.clone(), item.path.clone());
+                    let menu_item =
+                        MenuItem::new(action.label.clone(), move || on_activate(path.clone()));
+                    if action.destructive {
+                        menu_item.destructive()
+                    } else {
+                        menu_item
+                    }
+                })
+                .collect()
+        })
+        .collect()
 }

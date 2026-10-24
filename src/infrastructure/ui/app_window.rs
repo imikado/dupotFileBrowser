@@ -12,7 +12,7 @@ use crate::domain::contract::archive_repository::ArchiveRepository;
 use crate::domain::contract::file_system_repository::FileSystemRepository;
 use crate::domain::entity::app_info::APP;
 use crate::domain::entity::file_operation_entity::{FileOperationEntity, FileOperationKind};
-use crate::domain::entity::user_settings_entity::{Theme, ViewMode};
+use crate::domain::entity::user_settings_entity::{FavoriteMove, Theme, ViewMode};
 use crate::domain::error::{DomainError, DomainResult};
 use crate::domain::shared::icon_theme::icon_theme_override;
 use crate::domain::shared::packaging::Packaging;
@@ -27,7 +27,7 @@ use crate::infrastructure::ui::shared::alert_dialog::{ask_name, show_error};
 use crate::infrastructure::ui::shared::color_picker_popup::palette_css;
 use crate::infrastructure::ui::shared::file_icons;
 use crate::infrastructure::ui::shared::side_menu::{
-    PathCallback, SideMenu, SideMenuEntry, SideMenuItem,
+    PathCallback, SideMenu, SideMenuAction, SideMenuEntry, SideMenuItem,
 };
 use crate::infrastructure::ui::shared::view_mode_switcher::build_view_mode_switcher;
 
@@ -618,7 +618,7 @@ impl MainWindow {
                 label,
                 path: path.to_path_buf(),
                 on_activate: on_activate.clone(),
-                on_remove: None,
+                menu: Vec::new(),
             };
         let mut entries = vec![
             SideMenuEntry::Heading(tr("Places")),
@@ -646,21 +646,51 @@ impl MainWindow {
         let favorites = self.ctx.settings().favorite_list.clone();
         if !favorites.is_empty() {
             entries.push(SideMenuEntry::Heading(tr("Favorites")));
+            let action = |label: String, on_activate: &PathCallback, destructive| SideMenuAction {
+                label,
+                on_activate: on_activate.clone(),
+                destructive,
+            };
+            let move_up = callback(|this, path| this.move_favorite(&path, FavoriteMove::Up));
+            let move_down = callback(|this, path| this.move_favorite(&path, FavoriteMove::Down));
             let remove = callback(Self::remove_favorite);
-            for favorite in favorites {
+            let settings = self.ctx.settings();
+            for favorite in &favorites {
+                let can_move = |direction| settings.can_move_favorite(&favorite.path, direction);
+                let mut moves = Vec::new();
+                if can_move(FavoriteMove::Up) {
+                    moves.push(action(tr("Move Up"), &move_up, false));
+                }
+                if can_move(FavoriteMove::Down) {
+                    moves.push(action(tr("Move Down"), &move_down, false));
+                }
                 let mut favorite_item = item(
                     "folder-symbolic",
-                    favorite.label,
+                    favorite.label.clone(),
                     Path::new(&favorite.path),
                     &go_to,
                 );
-                favorite_item.on_remove = Some(remove.clone());
+                favorite_item.menu = vec![
+                    moves,
+                    vec![action(tr("Remove from favorites"), &remove, true)],
+                ];
                 entries.push(SideMenuEntry::Item(favorite_item));
             }
         }
         self.side_menu.set_entries(entries);
         self.side_menu
             .set_selected_path(&self.current_path.borrow());
+    }
+
+    fn move_favorite(self: &Rc<Self>, path: &Path, direction: FavoriteMove) {
+        let moved = self
+            .ctx
+            .settings_mut()
+            .move_favorite(&path.to_string_lossy(), direction);
+        if moved {
+            self.ctx.save_settings();
+            self.refresh_side_menu();
+        }
     }
 
     fn remove_favorite(self: &Rc<Self>, path: PathBuf) {

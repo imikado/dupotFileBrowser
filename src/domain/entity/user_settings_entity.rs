@@ -124,6 +124,12 @@ impl ViewMode {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FavoriteMove {
+    Up,
+    Down,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Favorite {
     pub label: String,
@@ -199,6 +205,33 @@ impl UserSettingsEntity {
 
     pub fn remove_favorite(&mut self, path: &str) {
         self.favorite_list.retain(|favorite| favorite.path != path);
+    }
+
+    /// Whether the favorite at `path` can move that way (not past the ends).
+    pub fn can_move_favorite(&self, path: &str, direction: FavoriteMove) -> bool {
+        self.favorite_target_index(path, direction).is_some()
+    }
+
+    /// Swaps the favorite at `path` with its neighbor; `false` when it's
+    /// unknown or already at that end.
+    pub fn move_favorite(&mut self, path: &str, direction: FavoriteMove) -> bool {
+        let Some((index, target)) = self.favorite_target_index(path, direction) else {
+            return false;
+        };
+        self.favorite_list.swap(index, target);
+        true
+    }
+
+    fn favorite_target_index(&self, path: &str, direction: FavoriteMove) -> Option<(usize, usize)> {
+        let index = self
+            .favorite_list
+            .iter()
+            .position(|favorite| favorite.path == path)?;
+        let target = match direction {
+            FavoriteMove::Up => index.checked_sub(1)?,
+            FavoriteMove::Down => index + 1,
+        };
+        (target < self.favorite_list.len()).then_some((index, target))
     }
 
     /// Follows a folder renamed or moved from `old` to `new`: favorites of
